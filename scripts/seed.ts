@@ -1,5 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type User } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { MAX_HOLD_SEATS_PER_REQUEST } from "@/lib/config";
 
 const prisma = new PrismaClient();
 
@@ -50,7 +51,7 @@ async function main() {
   });
 
   const customerNames = ["Alice Customer", "Bob Customer", "Carol Customer"];
-  const customers = [];
+  const customers: User[] = [];
   for (let i = 0; i < CREDENTIALS.customers.length; i++) {
     const customer = await prisma.user.create({
       data: {
@@ -139,10 +140,25 @@ async function main() {
   const premiumSeats = allSeats.filter((seat) => seat.categoryId === premium.id);
   const standardSeats = allSeats.filter((seat) => seat.categoryId === standard.id);
 
+  const SEATS_PER_BOOKING = 8;
+  if (SEATS_PER_BOOKING > MAX_HOLD_SEATS_PER_REQUEST) {
+    throw new Error("seed bookings must respect MAX_HOLD_SEATS_PER_REQUEST");
+  }
+
+  function chunk<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+    return chunks;
+  }
+
   const soldOutBookings = [
-    { reference: "BK-SEEDFULL1", user: customers[0], seats: premiumSeats, categoryName: "Premium", price: 500 },
-    { reference: "BK-SEEDFULL2", user: customers[1], seats: standardSeats, categoryName: "Standard", price: 250 },
-  ];
+    ...chunk(premiumSeats, SEATS_PER_BOOKING).map((seats) => ({ seats, categoryName: "Premium", price: 500 })),
+    ...chunk(standardSeats, SEATS_PER_BOOKING).map((seats) => ({ seats, categoryName: "Standard", price: 250 })),
+  ].map((group, index) => ({
+    reference: `BK-SEEDFULL${index + 1}`,
+    user: customers[index % customers.length],
+    ...group,
+  }));
 
   for (const { reference, user, seats, categoryName, price } of soldOutBookings) {
     const booking = await prisma.booking.create({

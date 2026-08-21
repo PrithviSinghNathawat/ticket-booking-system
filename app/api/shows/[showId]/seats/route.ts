@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { activeAllocationWhere } from "@/lib/allocations";
 
 export async function GET(
   request: Request,
@@ -25,7 +26,7 @@ export async function GET(
   const session = await getSession();
 
   const allocations = await prisma.seatAllocation.findMany({
-    where: { showId },
+    where: { showId, ...activeAllocationWhere(now) },
   });
   const allocationBySeatId = new Map(allocations.map((a) => [a.seatId, a]));
 
@@ -38,11 +39,16 @@ export async function GET(
     const categoryInfo = priceByCategoryId.get(seat.categoryId);
 
     let status: "AVAILABLE" | "HELD" | "BOOKED" | "HELD_BY_YOU" = "AVAILABLE";
+    let expiresAt: Date | null = null;
+
     if (allocation) {
       if (allocation.status === "BOOKED") {
         status = "BOOKED";
-      } else if (allocation.status === "HELD" && allocation.expiresAt && allocation.expiresAt >= now) {
-        status = session?.userId === allocation.holderUserId ? "HELD_BY_YOU" : "HELD";
+      } else if (session?.userId === allocation.holderUserId) {
+        status = "HELD_BY_YOU";
+        expiresAt = allocation.expiresAt;
+      } else {
+        status = "HELD";
       }
     }
 
@@ -53,6 +59,7 @@ export async function GET(
       categoryName: categoryInfo?.categoryName ?? "Unknown",
       price: categoryInfo?.price ?? null,
       status,
+      expiresAt,
     };
   });
 

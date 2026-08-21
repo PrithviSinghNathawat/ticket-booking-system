@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed.ts",
-    "concurrency-test": "tsx scripts/concurrency-test.ts"
+    "concurrency-test": "tsx scripts/concurrency-test.ts",
+    "ttl-test": "tsx scripts/ttl-test.ts"
   },
   "prisma": {
     "seed": "tsx scripts/seed.ts"

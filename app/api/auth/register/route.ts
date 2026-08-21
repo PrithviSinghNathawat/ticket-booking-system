@@ -8,7 +8,15 @@ export async function POST(request: Request) {
   const parsed = await parseBody(registerSchema, request);
   if (!parsed.ok) return parsed.response;
 
-  const { email, password, name, role } = parsed.data;
+  const { email, password, name, role, inviteCode } = parsed.data;
+
+  const expectedInviteCode = process.env.ORGANISER_SIGNUP_CODE;
+  if (role === "ORGANISER" && (!expectedInviteCode || inviteCode !== expectedInviteCode)) {
+    return NextResponse.json(
+      { error: "Organiser registration requires a valid invite code" },
+      { status: 403 }
+    );
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {

@@ -128,20 +128,59 @@ async function scenarioOverlappingMultiSeat(
   return [userA.userId, userB.userId];
 }
 
+async function scenarioNonOverlappingBothSucceed(
+  showId: string,
+  seatIdsA: string[],
+  seatIdsB: string[]
+) {
+  console.log("\nScenario 3: non-overlapping multi-seat claims, both succeed");
+
+  const allSeatIds = Array.from(new Set([...seatIdsA, ...seatIdsB]));
+  await prisma.seatAllocation.deleteMany({ where: { showId, seatId: { in: allSeatIds } } });
+
+  const userA = await registerRacer(`racer-s3-a-${Date.now()}@ticketing.test`);
+  const userB = await registerRacer(`racer-s3-b-${Date.now()}@ticketing.test`);
+
+  const [resA, resB] = await Promise.all([
+    postHold(showId, userA.cookie, seatIdsA),
+    postHold(showId, userB.cookie, seatIdsB),
+  ]);
+
+  assert(resA.status >= 200 && resA.status < 300, `user A's request succeeds (got ${resA.status})`);
+  assert(resB.status >= 200 && resB.status < 300, `user B's request succeeds (got ${resB.status})`);
+
+  const rowsA = await prisma.seatAllocation.findMany({ where: { showId, holderUserId: userA.userId } });
+  const rowsB = await prisma.seatAllocation.findMany({ where: { showId, holderUserId: userB.userId } });
+
+  assert(
+    rowsA.length === seatIdsA.length,
+    `user A holds exactly its ${seatIdsA.length} requested seats (got ${rowsA.length})`
+  );
+  assert(
+    rowsB.length === seatIdsB.length,
+    `user B holds exactly its ${seatIdsB.length} requested seats (got ${rowsB.length})`
+  );
+
+  return [userA.userId, userB.userId];
+}
+
 async function main() {
   console.log(`Running concurrency test against BASE_URL=${BASE_URL}`);
 
-  const show = await findShowWithSeats(6);
+  const show = await findShowWithSeats(10);
   const seats = show.venue.seats;
   const seatSingle = seats[0].id;
   const seatIdsA = [seats[1].id, seats[2].id, seats[3].id];
   const seatIdsB = [seats[3].id, seats[4].id, seats[5].id];
+  const seatIdsC = [seats[6].id, seats[7].id];
+  const seatIdsD = [seats[8].id, seats[9].id];
 
   const createdUserIds: string[] = [];
 
   try {
     createdUserIds.push(...(await scenarioSingleSeatRace(show.id, seatSingle)));
     createdUserIds.push(...(await scenarioOverlappingMultiSeat(show.id, seatIdsA, seatIdsB)));
+    createdUserIds.push(...(await scenarioNonOverlappingBothSucceed(show.id, seatIdsC, seatIdsD)));
   } finally {
     console.log("\nCleaning up throwaway users and their allocations...");
     await prisma.seatAllocation.deleteMany({ where: { holderUserId: { in: createdUserIds } } });

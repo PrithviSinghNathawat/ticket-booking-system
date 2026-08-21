@@ -7,6 +7,7 @@ export const registerSchema = z
     password: z.string().min(8),
     name: z.string().min(1),
     role: z.enum(["CUSTOMER", "ORGANISER"]).default("CUSTOMER"),
+    inviteCode: z.string().optional(),
   })
   .strict();
 

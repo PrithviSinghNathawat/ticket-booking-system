@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { holdRequestSchema } from "@/lib/schemas";
 import { HOLD_TTL_SECONDS } from "@/lib/config";
+import { activeAllocationWhere, expiredHoldWhere, isActive } from "@/lib/allocations";
 
 class ActiveHoldExistsError extends Error {}
 
@@ -59,14 +60,14 @@ export async function POST(
   try {
     await prisma.$transaction(async (tx) => {
       const existingHold = await tx.seatAllocation.findFirst({
-        where: { showId, holderUserId: userId, status: "HELD", expiresAt: { gt: now } },
+        where: { showId, holderUserId: userId, status: "HELD" },
       });
-      if (existingHold) {
+      if (existingHold && isActive(existingHold, now)) {
         throw new ActiveHoldExistsError();
       }
 
       await tx.seatAllocation.deleteMany({
-        where: { showId, seatId: { in: seatIds }, status: "HELD", expiresAt: { lt: now } },
+        where: { showId, seatId: { in: seatIds }, ...expiredHoldWhere(now) },
       });
 
       await tx.seatAllocation.createMany({
@@ -92,11 +93,7 @@ export async function POST(
 
     if (isSeatShowUniqueViolation(err)) {
       const conflicting = await prisma.seatAllocation.findMany({
-        where: {
-          showId,
-          seatId: { in: seatIds },
-          OR: [{ status: "BOOKED" }, { status: "HELD", expiresAt: { gt: now } }],
-        },
+        where: { showId, seatId: { in: seatIds }, ...activeAllocationWhere(now) },
         select: { seatId: true },
       });
       return NextResponse.json(
@@ -111,7 +108,7 @@ export async function POST(
     throw err;
   }
 
-  return NextResponse.json({ seatIds, expiresAt });
+  return NextResponse.json({ seatIds, expiresAt }, { status: 201 });
 }
 
 export async function DELETE(
