@@ -136,43 +136,45 @@ async function main() {
     });
   }
 
-  const soldOutBooker = customers[0];
-  const booking = await prisma.booking.create({
-    data: {
-      reference: "BK-SEEDFULL1",
-      showId: showSoldOut.id,
-      userId: soldOutBooker.id,
-      status: "CONFIRMED",
-      totalAmount: allSeats.reduce(
-        (sum, seat) =>
-          sum + (seat.categoryId === premium.id ? 500 : 250),
-        0
-      ),
-    },
-  });
+  const premiumSeats = allSeats.filter((seat) => seat.categoryId === premium.id);
+  const standardSeats = allSeats.filter((seat) => seat.categoryId === standard.id);
 
-  for (const seat of allSeats) {
-    const categoryName = seat.categoryId === premium.id ? "Premium" : "Standard";
-    const price = seat.categoryId === premium.id ? 500 : 250;
+  const soldOutBookings = [
+    { reference: "BK-SEEDFULL1", user: customers[0], seats: premiumSeats, categoryName: "Premium", price: 500 },
+    { reference: "BK-SEEDFULL2", user: customers[1], seats: standardSeats, categoryName: "Standard", price: 250 },
+  ];
 
-    await prisma.seatAllocation.create({
+  for (const { reference, user, seats, categoryName, price } of soldOutBookings) {
+    const booking = await prisma.booking.create({
       data: {
+        reference,
         showId: showSoldOut.id,
-        seatId: seat.id,
-        status: "BOOKED",
-        holderUserId: soldOutBooker.id,
-        bookingId: booking.id,
+        userId: user.id,
+        status: "CONFIRMED",
+        totalAmount: price * seats.length,
       },
     });
 
-    await prisma.bookingSeat.create({
-      data: {
-        bookingId: booking.id,
-        seatId: seat.id,
-        categoryName,
-        price,
-      },
-    });
+    for (const seat of seats) {
+      await prisma.seatAllocation.create({
+        data: {
+          showId: showSoldOut.id,
+          seatId: seat.id,
+          status: "BOOKED",
+          holderUserId: user.id,
+          bookingId: booking.id,
+        },
+      });
+
+      await prisma.bookingSeat.create({
+        data: {
+          bookingId: booking.id,
+          seatId: seat.id,
+          categoryName,
+          price,
+        },
+      });
+    }
   }
 
   console.log("\nSeed complete. Credentials:\n");
