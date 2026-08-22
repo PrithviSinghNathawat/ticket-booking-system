@@ -4,7 +4,9 @@
 
 Expiry is a property of the data, not a scheduled job. A `HELD` `SeatAllocation` row carries an `expiresAt`; every code path that decides whether a seat is available treats a `HELD` row with `expiresAt` in the past as free. That logic lives once, in `lib/allocations.ts`, and every call site (seat map, hold creation, the "already holds a seat" guard, the holds-summary endpoint, the sweep) uses it, so the definition of "active" cannot drift between call sites.
 
-`POST /api/cron/sweep`, run daily by `vercel.json`'s cron entry, deletes rows that are already expired. This is best-effort table hygiene, not the mechanism that enforces the ten-minute window — Vercel's Hobby plan runs cron at most once a day, which is nowhere near tight enough to be a TTL enforcer. The actual guarantee is that lazy expiry makes an expired hold invisible to every reader within milliseconds, regardless of when the sweep last ran. Deliberately, `GET /api/shows/[id]/seats` does not delete expired rows itself — it only computes status — so a read stays a read; physical cleanup is confined to the hold-creation transaction (for the seats it's about to claim) and the sweep.
+`POST /api/cron/sweep`, run daily by `vercel.json`'s cron entry, deletes rows that are already expired. This is best-effort table hygiene, not the mechanism that enforces the ten-minute window — Vercel's Hobby plan runs cron at most once a day, which is nowhere near tight enough to be a TTL enforcer. The actual guarantee is that lazy expiry makes an expired hold invisible to every reader within milliseconds, regardless of when the sweep last ran.
+
+`GET /api/shows/[id]/seats` deliberately performs no writes, and the real reason is load, not tidiness: it's polled every 3 seconds by every connected client. An inline sweep would turn every read into a write, multiplying database load by the number of open tabs on that show — the exact opposite of what a hot polling endpoint should do. Physical cleanup is confined to two places that already have a reason to touch the row: the hold-creation transaction (deleting expired rows for the specific seats it's about to claim) and the daily sweep.
 
 ## Concurrency
 

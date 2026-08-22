@@ -40,6 +40,7 @@ export async function GET(
 
     let status: "AVAILABLE" | "HELD" | "BOOKED" | "HELD_BY_YOU" = "AVAILABLE";
     let expiresAt: Date | null = null;
+    let mine = false;
 
     if (allocation) {
       if (allocation.status === "BOOKED") {
@@ -47,6 +48,7 @@ export async function GET(
       } else if (session?.userId === allocation.holderUserId) {
         status = "HELD_BY_YOU";
         expiresAt = allocation.expiresAt;
+        mine = true;
       } else {
         status = "HELD";
       }
@@ -56,10 +58,12 @@ export async function GET(
       seatId: seat.id,
       rowLabel: seat.rowLabel,
       seatNumber: seat.seatNumber,
+      categoryId: seat.categoryId,
       categoryName: categoryInfo?.categoryName ?? "Unknown",
       price: categoryInfo?.price ?? null,
       status,
       expiresAt,
+      mine,
     };
   });
 
@@ -77,5 +81,6 @@ export async function GET(
       price: p.price,
     })),
     seats,
+    serverNow: now.toISOString(),
   });
 }
