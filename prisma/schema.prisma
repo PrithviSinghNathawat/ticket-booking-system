@@ -84,6 +84,7 @@ model Seat {
   category    SeatCategory @relation(fields: [categoryId], references: [id])
   allocations SeatAllocation[]
   bookingSeats BookingSeat[]
+  waitlistOffers WaitlistOffer[]
 
   @@unique([venueId, rowLabel, seatNumber])
 }
@@ -175,6 +176,8 @@ model WaitlistEntry {
   show       Show            @relation(fields: [showId], references: [id])
   user       User            @relation(fields: [userId], references: [id])
   offers     WaitlistOffer[]
+
+  @@unique([showId, categoryId, userId])
 }
 
 model WaitlistOffer {
@@ -185,4 +188,5 @@ model WaitlistOffer {
   expiresAt       DateTime
   status          WaitlistOfferStatus
   waitlistEntry   WaitlistEntry       @relation(fields: [waitlistEntryId], references: [id])
+  seat            Seat                @relation(fields: [seatId], references: [id])
 }

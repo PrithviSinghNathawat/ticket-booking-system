@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSeatMapPolling } from "@/hooks/useSeatMapPolling";
 import { SeatMap } from "@/components/SeatMap";
@@ -8,6 +9,14 @@ import { SeatLegend } from "@/components/SeatLegend";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { MAX_HOLD_SEATS_PER_REQUEST } from "@/lib/config";
 import type { SeatMapSeat } from "@/lib/types";
+
+type MyWaitlistEntry = {
+  showId: string;
+  categoryId: string;
+  status: "WAITING" | "OFFERED";
+  position: number | null;
+  offer: { token: string; expiresAt: string; rowLabel: string; seatNumber: number } | null;
+};
 
 export function ShowSeatMapClient({
   showId,
@@ -33,6 +42,24 @@ export function ShowSeatMapClient({
   const mySeats = useMemo(() => data?.seats.filter((s) => s.mine) ?? [], [data]);
   const activeHold =
     mySeats.length > 0 ? { seatIds: mySeats.map((s) => s.seatId), expiresAt: mySeats[0].expiresAt! } : null;
+
+  const [myWaitlist, setMyWaitlist] = useState<MyWaitlistEntry[]>([]);
+  const [waitlistBusy, setWaitlistBusy] = useState<string | null>(null);
+
+  const loadMyWaitlist = useCallback(() => {
+    if (!isAuthenticated || !canHold) return;
+    fetch("/api/waitlist/me")
+      .then((res) => res.json())
+      .then((body) => {
+        setMyWaitlist((body.entries ?? []).filter((e: MyWaitlistEntry) => e.showId === showId));
+      })
+      .catch(() => {});
+  }, [isAuthenticated, canHold, showId]);
+
+  useEffect(() => {
+    fetch(`/api/shows/${showId}/waitlist/process`, { method: "POST" }).catch(() => {});
+    loadMyWaitlist();
+  }, [showId, loadMyWaitlist]);
 
   useEffect(() => {
     if (!data) return;
@@ -124,6 +151,32 @@ export function ShowSeatMapClient({
     }
   }
 
+  async function handleJoinWaitlist(categoryId: string) {
+    setWaitlistBusy(categoryId);
+    try {
+      await fetch(`/api/shows/${showId}/waitlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId }),
+      });
+    } finally {
+      setWaitlistBusy(null);
+      loadMyWaitlist();
+    }
+  }
+
+  async function handleLeaveWaitlist(categoryId: string) {
+    setWaitlistBusy(categoryId);
+    try {
+      await fetch(`/api/shows/${showId}/waitlist?categoryId=${encodeURIComponent(categoryId)}`, {
+        method: "DELETE",
+      });
+    } finally {
+      setWaitlistBusy(null);
+      loadMyWaitlist();
+    }
+  }
+
   if (!data) {
     return <main className="flex-1 p-8">Loading seat map...</main>;
   }
@@ -143,6 +196,14 @@ export function ShowSeatMapClient({
     (sum, b) => sum + b.price * b.count,
     0
   );
+
+  const waitlistByCategory = new Map(myWaitlist.map((e) => [e.categoryId, e]));
+  const categorySoldOut = new Map<string, boolean>();
+  for (const price of data.prices) {
+    const seatsInCategory = data.seats.filter((s) => s.categoryId === price.categoryId);
+    const soldOut = seatsInCategory.length > 0 && seatsInCategory.every((s) => s.status !== "AVAILABLE");
+    categorySoldOut.set(price.categoryId, soldOut);
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6">
@@ -171,6 +232,66 @@ export function ShowSeatMapClient({
             : undefined
         }
       />
+
+      {canHold && (
+        <div className="flex flex-col gap-2">
+          {data.prices
+            .filter((p) => categorySoldOut.get(p.categoryId))
+            .map((p) => {
+              const entry = waitlistByCategory.get(p.categoryId);
+              return (
+                <div
+                  key={p.categoryId}
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--border-subtle)] p-3 text-sm"
+                >
+                  <span className="font-semibold">{p.categoryName} is sold out</span>
+                  {!entry && (
+                    <button
+                      onClick={() => handleJoinWaitlist(p.categoryId)}
+                      disabled={waitlistBusy === p.categoryId}
+                      className="rounded bg-[var(--accent)] px-3 py-1 font-semibold text-[var(--accent-fg)] disabled:opacity-50"
+                    >
+                      Join waitlist
+                    </button>
+                  )}
+                  {entry?.status === "WAITING" && (
+                    <>
+                      <span className="rounded bg-[var(--held)] px-2 py-0.5 text-xs font-semibold text-white">
+                        Position {entry.position}
+                      </span>
+                      <button
+                        onClick={() => handleLeaveWaitlist(p.categoryId)}
+                        disabled={waitlistBusy === p.categoryId}
+                        className="rounded border border-[var(--border-subtle)] px-3 py-1 disabled:opacity-50"
+                      >
+                        Leave waitlist
+                      </button>
+                    </>
+                  )}
+                  {entry?.status === "OFFERED" && entry.offer && (
+                    <>
+                      <span className="rounded bg-[var(--mine)] px-2 py-0.5 text-xs font-semibold text-white">
+                        Seat offered: {entry.offer.rowLabel}
+                        {entry.offer.seatNumber}
+                      </span>
+                      <CountdownTimer
+                        expiresAt={entry.offer.expiresAt}
+                        serverNow={data.serverNow}
+                        onExpire={loadMyWaitlist}
+                      />
+                      <Link
+                        href={`/waitlist/claim/${entry.offer.token}`}
+                        className="rounded bg-[var(--accent)] px-3 py-1 font-semibold text-[var(--accent-fg)]"
+                      >
+                        Claim seat
+                      </Link>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      )}
 
       {lostNotice && (
         <p role="status" className="rounded bg-red-50 px-3 py-2 text-sm text-red-800">

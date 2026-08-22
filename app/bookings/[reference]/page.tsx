@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildQrPayload } from "@/lib/qr";
-import QRCode from "qrcode";
+import { renderQrDataUrl } from "@/lib/mail";
+import { CancelBookingButton } from "./CancelBookingButton";
 
 export default async function BookingDetailPage({
   params,
@@ -28,7 +29,7 @@ export default async function BookingDetailPage({
     notFound();
   }
 
-  const qrDataUrl = await QRCode.toDataURL(buildQrPayload(booking.reference), { margin: 1, width: 220 });
+  const qrDataUrl = await renderQrDataUrl(buildQrPayload(booking.reference));
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6">
@@ -51,6 +52,11 @@ export default async function BookingDetailPage({
               {booking.status}
             </span>
           </p>
+          {booking.status === "CONFIRMED" && (
+            <div className="mt-2">
+              <CancelBookingButton reference={booking.reference} />
+            </div>
+          )}
         </div>
         <img src={qrDataUrl} alt="Ticket QR code" width={160} height={160} className="rounded-lg border border-[var(--border-subtle)]" />
       </div>

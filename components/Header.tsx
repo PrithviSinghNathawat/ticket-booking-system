@@ -23,9 +23,14 @@ export function Header({ session }: { session: Session | null }) {
           Browse
         </Link>
         {session?.role === "CUSTOMER" && (
-          <Link href="/bookings" className="hover:underline">
-            My bookings
-          </Link>
+          <>
+            <Link href="/bookings" className="hover:underline">
+              My bookings
+            </Link>
+            <Link href="/waitlist" className="hover:underline">
+              Waitlist
+            </Link>
+          </>
         )}
         {session ? (
           <>

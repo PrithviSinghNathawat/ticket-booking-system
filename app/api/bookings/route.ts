@@ -125,6 +125,27 @@ export async function POST(request: Request) {
           throw new HoldLapsedError();
         }
 
+        const claimedOffers = await tx.waitlistOffer.findMany({
+          where: {
+            seatId: { in: ordered },
+            status: "PENDING",
+            waitlistEntry: { showId, userId },
+          },
+        });
+
+        for (const offer of claimedOffers) {
+          const guarded = await tx.waitlistOffer.updateMany({
+            where: { id: offer.id, status: "PENDING" },
+            data: { status: "CLAIMED" },
+          });
+          if (guarded.count === 1) {
+            await tx.waitlistEntry.update({
+              where: { id: offer.waitlistEntryId },
+              data: { status: "CONVERTED" },
+            });
+          }
+        }
+
         await tx.bookingSeat.createMany({
           data: seatSnapshots.map((s) => ({
             bookingId,

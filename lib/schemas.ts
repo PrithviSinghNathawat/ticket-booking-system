@@ -33,3 +33,15 @@ export const holdRequestSchema = z
       .max(MAX_HOLD_SEATS_PER_REQUEST),
   })
   .strict();
+
+export const joinWaitlistSchema = z
+  .object({
+    categoryId: z.string().min(1),
+  })
+  .strict();
+
+export const claimWaitlistSchema = z
+  .object({
+    token: z.string().min(1),
+  })
+  .strict();

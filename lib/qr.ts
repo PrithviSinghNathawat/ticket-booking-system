@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
+const HMAC_HEX_LENGTH = 16;
+
 function getSecret(): string {
   const secret = process.env.QR_SIGNING_SECRET;
   if (!secret) throw new Error("QR_SIGNING_SECRET is not set");
@@ -7,7 +9,7 @@ function getSecret(): string {
 }
 
 function signReference(reference: string): string {
-  return createHmac("sha256", getSecret()).update(reference).digest("hex");
+  return createHmac("sha256", getSecret()).update(reference).digest("hex").slice(0, HMAC_HEX_LENGTH);
 }
 
 export function buildQrPayload(reference: string): string {

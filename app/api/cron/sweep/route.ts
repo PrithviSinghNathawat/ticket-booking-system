@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { expiredHoldWhere } from "@/lib/allocations";
+import { processWaitlistForAllActiveShows } from "@/lib/waitlist";
 
 async function sweep(request: Request) {
   const expectedSecret = process.env.CRON_SECRET;
@@ -13,14 +14,16 @@ async function sweep(request: Request) {
   const start = Date.now();
   const now = new Date();
 
+  const { expiredOffers, promotedWaitlistEntries } = await processWaitlistForAllActiveShows();
+
   const deleted = await prisma.seatAllocation.deleteMany({
     where: expiredHoldWhere(now),
   });
 
   return NextResponse.json({
     deletedHolds: deleted.count,
-    expiredOffers: 0,
-    promotedWaitlistEntries: 0,
+    expiredOffers,
+    promotedWaitlistEntries,
     durationMs: Date.now() - start,
   });
 }
