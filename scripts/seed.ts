@@ -1,16 +1,22 @@
 import { PrismaClient, type User } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { MAX_HOLD_SEATS_PER_REQUEST } from "@/lib/config";
+import { MAX_HOLD_SEATS_PER_REQUEST, DEMO_RECIPIENT_EMAIL } from "@/lib/config";
 
 const prisma = new PrismaClient();
+
+function demoEmail(tag: string, fallback: string): string {
+  if (!DEMO_RECIPIENT_EMAIL) return fallback;
+  const [local, domain] = DEMO_RECIPIENT_EMAIL.split("@");
+  return `${local}+${tag}@${domain}`;
+}
 
 const CREDENTIALS = {
   admin: { email: "admin@ticketing.test", password: "AdminPass123!" },
   organiser: { email: "organiser@ticketing.test", password: "OrganiserPass123!" },
   customers: [
-    { email: "alice@ticketing.test", password: "CustomerPass123!" },
-    { email: "bob@ticketing.test", password: "CustomerPass123!" },
-    { email: "carol@ticketing.test", password: "CustomerPass123!" },
+    { email: demoEmail("alice", "alice@ticketing.test"), password: "CustomerPass123!" },
+    { email: demoEmail("bob", "bob@ticketing.test"), password: "CustomerPass123!" },
+    { email: demoEmail("carol", "carol@ticketing.test"), password: "CustomerPass123!" },
   ],
 };
 

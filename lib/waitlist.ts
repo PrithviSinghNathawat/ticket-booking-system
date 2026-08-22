@@ -56,6 +56,103 @@ export async function offerSeatToNextWaiter(
   return { entry, offer, seatId: params.seatId };
 }
 
+export type FreedSeat = { seatId: string; categoryId: string };
+
+export type BatchOfferResult = {
+  entry: WaitlistEntry;
+  seatId: string;
+  token: string;
+  expiresAt: Date;
+}[];
+
+export async function offerFreedSeatsBatch(
+  tx: TxClient,
+  params: { showId: string; freed: FreedSeat[]; now: Date; strict?: boolean }
+): Promise<BatchOfferResult | null> {
+  if (params.freed.length === 0) return [];
+
+  const seatIdsByCategory = new Map<string, string[]>();
+  for (const f of params.freed) {
+    const list = seatIdsByCategory.get(f.categoryId) ?? [];
+    list.push(f.seatId);
+    seatIdsByCategory.set(f.categoryId, list);
+  }
+  const categoryIds = Array.from(seatIdsByCategory.keys());
+
+  const candidates = await tx.waitlistEntry.findMany({
+    where: { showId: params.showId, categoryId: { in: categoryIds }, status: "WAITING" },
+    orderBy: [{ categoryId: "asc" }, { createdAt: "asc" }],
+  });
+
+  const candidatesByCategory = new Map<string, WaitlistEntry[]>();
+  for (const c of candidates) {
+    const list = candidatesByCategory.get(c.categoryId) ?? [];
+    list.push(c);
+    candidatesByCategory.set(c.categoryId, list);
+  }
+
+  const pairs: { entry: WaitlistEntry; seatId: string }[] = [];
+  for (const [categoryId, seatIds] of seatIdsByCategory) {
+    const entries = candidatesByCategory.get(categoryId) ?? [];
+    const n = Math.min(entries.length, seatIds.length);
+    for (let i = 0; i < n; i++) {
+      pairs.push({ entry: entries[i], seatId: seatIds[i] });
+    }
+  }
+
+  if (pairs.length === 0) return [];
+
+  const entryIds = pairs.map((p) => p.entry.id);
+  const guarded = await tx.waitlistEntry.updateMany({
+    where: { id: { in: entryIds }, status: "WAITING" },
+    data: { status: "OFFERED" },
+  });
+
+  let finalPairs = pairs;
+  if (guarded.count !== entryIds.length) {
+    if (params.strict !== false) {
+      return null;
+    }
+    const succeeded = await tx.waitlistEntry.findMany({
+      where: { id: { in: entryIds }, status: "OFFERED" },
+      select: { id: true },
+    });
+    const succeededIds = new Set(succeeded.map((s) => s.id));
+    finalPairs = pairs.filter((p) => succeededIds.has(p.entry.id));
+  }
+
+  if (finalPairs.length === 0) return [];
+
+  const expiresAt = new Date(params.now.getTime() + WAITLIST_OFFER_TTL_SECONDS * 1000);
+  const prepared = finalPairs.map((p) => ({
+    entry: p.entry,
+    seatId: p.seatId,
+    token: randomBytes(32).toString("hex"),
+  }));
+
+  await tx.waitlistOffer.createMany({
+    data: prepared.map((p) => ({
+      waitlistEntryId: p.entry.id,
+      seatId: p.seatId,
+      token: p.token,
+      expiresAt,
+      status: "PENDING" as const,
+    })),
+  });
+
+  await tx.seatAllocation.createMany({
+    data: prepared.map((p) => ({
+      showId: params.showId,
+      seatId: p.seatId,
+      status: "HELD" as const,
+      holderUserId: p.entry.userId,
+      expiresAt,
+    })),
+  });
+
+  return prepared.map((p) => ({ entry: p.entry, seatId: p.seatId, token: p.token, expiresAt }));
+}
+
 async function expireOneOfferForShow(showId: string, now: Date) {
   return prisma.$transaction(async (tx) => {
     const offer = await tx.waitlistOffer.findFirst({

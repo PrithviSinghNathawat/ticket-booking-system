@@ -18,6 +18,7 @@ One consequence worth being explicit about: `GET /api/shows/[id]/seats` does **n
 
 - **Ambiguous hold outcomes under heavy concurrency.** A hold request can fail in a way that doesn't tell the customer whether they got the seat (a dropped connection, a serverless cold start, a Neon pool timeout) — the request never resolves cleanly to a `2xx` or a `409`. `GET /api/holds/me` is the reconciliation path: it always reflects the true server-side state of what a customer currently holds, so a client that isn't sure what happened should call it rather than guess. This is treated as a handled case, not an edge case that got missed.
 - **Neon free-tier cold start.** The database can take a few seconds to wake up after a period of inactivity, which shows up as slow first requests rather than errors.
+- **Seeded email addresses aren't real by default.** `alice@ticketing.test` and friends aren't a deliverable domain — Nodemailer's `250 OK` from Gmail means Gmail accepted the message, not that it reached anyone. Set `DEMO_RECIPIENT_EMAIL` and the seed script gives alice, bob and carol `you+alice@…`, `you+bob@…`, `you+carol@…` (Gmail's `+tag` addressing) instead, so every seeded account's mail — booking confirmations and waitlist offers alike — lands in one real inbox you can actually check, while each login email stays unique. Leave it unset and the seed falls back to the non-deliverable `@ticketing.test` addresses.
 
 ## Organiser signup
 

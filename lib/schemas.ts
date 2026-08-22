@@ -45,3 +45,58 @@ export const claimWaitlistSchema = z
     token: z.string().min(1),
   })
   .strict();
+
+const venueRowSchema = z.object({
+  label: z.string().min(1),
+  seatCount: z.number().int().min(1).max(50),
+  categoryName: z.string().min(1),
+});
+
+export const createVenueSchema = z
+  .object({
+    name: z.string().min(1),
+    address: z.string().min(1),
+    categories: z.array(z.object({ name: z.string().min(1) })).min(1),
+    rows: z.array(venueRowSchema).min(1),
+  })
+  .strict();
+
+export const updateVenueSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    address: z.string().min(1).optional(),
+    categories: z.array(z.object({ name: z.string().min(1) })).min(1).optional(),
+    rows: z.array(venueRowSchema).min(1).optional(),
+  })
+  .strict();
+
+export const createEventSchema = z
+  .object({
+    title: z.string().min(1),
+    type: z.enum(["MOVIE", "CONCERT"]),
+    description: z.string().min(1),
+  })
+  .strict();
+
+export const updateEventSchema = z
+  .object({
+    title: z.string().min(1).optional(),
+    type: z.enum(["MOVIE", "CONCERT"]).optional(),
+    description: z.string().min(1).optional(),
+  })
+  .strict();
+
+export const createShowSchema = z
+  .object({
+    venueId: z.string().min(1),
+    startsAt: z.string().datetime(),
+    prices: z.array(z.object({ categoryId: z.string().min(1), price: z.number().positive() })).min(1),
+  })
+  .strict();
+
+export const updateShowSchema = z
+  .object({
+    startsAt: z.string().datetime().optional(),
+    prices: z.array(z.object({ categoryId: z.string().min(1), price: z.number().positive() })).min(1).optional(),
+  })
+  .strict();

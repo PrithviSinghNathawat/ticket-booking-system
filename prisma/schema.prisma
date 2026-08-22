@@ -149,6 +149,7 @@ model Booking {
   contactName  String
   contactEmail String
   contactPhone String
+  messageId    String?
   createdAt    DateTime       @default(now())
   show         Show           @relation(fields: [showId], references: [id])
   user         User           @relation(fields: [userId], references: [id])
@@ -187,6 +188,7 @@ model WaitlistOffer {
   token           String              @unique
   expiresAt       DateTime
   status          WaitlistOfferStatus
+  messageId       String?
   waitlistEntry   WaitlistEntry       @relation(fields: [waitlistEntryId], references: [id])
   seat            Seat                @relation(fields: [seatId], references: [id])
 }

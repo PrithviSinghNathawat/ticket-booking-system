@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { after } from "next/server";
 import QRCode from "qrcode";
 import { MAIL_DRY_RUN } from "@/lib/config";
+import { prisma } from "@/lib/prisma";
 
 let transporter: nodemailer.Transporter | null = null;
 
@@ -37,10 +38,10 @@ type MailJob = {
   attachments?: { filename: string; content: Buffer; cid: string }[];
 };
 
-async function sendOne(job: MailJob) {
+async function sendOne(job: MailJob): Promise<{ logRef: string; messageId: string | null }> {
   if (MAIL_DRY_RUN) {
     console.log(`[MAIL_DRY_RUN] ${job.logRef}`, { to: job.to, subject: job.subject, text: job.text });
-    return;
+    return { logRef: job.logRef, messageId: null };
   }
 
   const info = await getTransporter().sendMail({
@@ -52,14 +53,17 @@ async function sendOne(job: MailJob) {
     attachments: job.attachments,
   });
   console.log(`Sent email for ${job.logRef}:`, info.messageId);
+  return { logRef: job.logRef, messageId: info.messageId };
 }
 
-async function sendMailBatch(jobs: MailJob[]) {
+async function sendMailBatch(jobs: MailJob[]): Promise<{ logRef: string; messageId: string | null }[]> {
   const results = await Promise.allSettled(jobs.map(sendOne));
-  results.forEach((result, i) => {
+  return results.map((result, i) => {
     if (result.status === "rejected") {
       console.error(`Failed to send email for ${jobs[i].logRef}:`, result.reason);
+      return { logRef: jobs[i].logRef, messageId: null };
     }
+    return result.value;
   });
 }
 
@@ -135,7 +139,12 @@ export function sendBookingConfirmationEmail(payload: BookingEmailPayload) {
   after(async () => {
     try {
       const job = await buildBookingConfirmationJob(payload);
-      await sendMailBatch([job]);
+      const [result] = await sendMailBatch([job]);
+      if (result.messageId) {
+        await prisma.booking
+          .update({ where: { reference: payload.reference }, data: { messageId: result.messageId } })
+          .catch((err) => console.error(`Failed to persist messageId for booking ${payload.reference}:`, err));
+      }
     } catch (err) {
       console.error(`Failed to build booking confirmation email for ${payload.reference}:`, err);
     }
@@ -197,7 +206,16 @@ export function sendWaitlistOfferEmails(payloads: WaitlistOfferEmailPayload[]) {
   if (payloads.length === 0) return;
   after(async () => {
     const jobs = payloads.map(buildWaitlistOfferJob);
-    await sendMailBatch(jobs);
+    const results = await sendMailBatch(jobs);
+    await Promise.all(
+      results
+        .filter((r) => r.messageId)
+        .map((r) =>
+          prisma.waitlistOffer
+            .update({ where: { token: r.logRef }, data: { messageId: r.messageId } })
+            .catch((err) => console.error(`Failed to persist messageId for offer ${r.logRef}:`, err))
+        )
+    );
   });
 }
 

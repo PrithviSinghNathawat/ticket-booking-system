@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { activeAllocationWhere } from "@/lib/allocations";
+import { requireRole } from "@/lib/auth";
+import { parseBody } from "@/lib/validate";
+import { createEventSchema } from "@/lib/schemas";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -79,4 +82,23 @@ export async function GET(request: Request) {
     });
 
   return NextResponse.json({ events: results });
+}
+
+export async function POST(request: Request) {
+  const auth = await requireRole(["ORGANISER"]);
+  if (!auth.ok) return auth.response;
+
+  const parsed = await parseBody(createEventSchema, request);
+  if (!parsed.ok) return parsed.response;
+
+  const { title, type, description } = parsed.data;
+
+  const event = await prisma.event.create({
+    data: { title, type, description, organiserId: auth.session.userId },
+  });
+
+  return NextResponse.json(
+    { id: event.id, title: event.title, type: event.type, description: event.description },
+    { status: 201 }
+  );
 }
