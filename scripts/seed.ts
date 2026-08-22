@@ -168,6 +168,9 @@ async function main() {
         userId: user.id,
         status: "CONFIRMED",
         totalAmount: price * seats.length,
+        contactName: user.name,
+        contactEmail: user.email,
+        contactPhone: "+1-555-0100",
       },
     });
 

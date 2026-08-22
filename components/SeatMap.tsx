@@ -13,7 +13,7 @@ const STATUS_GLYPH: Record<string, string> = {
   HELD: "•",
   BOOKED: "×",
   SELECTED: "✓",
-  HELD_BY_YOU: "⏱",
+  HELD_BY_YOU: "⏱︎",
 };
 
 function displayStatus(seat: SeatMapSeat, selected: boolean): keyof typeof STATUS_LABEL {

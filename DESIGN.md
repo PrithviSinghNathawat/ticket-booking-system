@@ -12,6 +12,10 @@ Expiry is a property of the data, not a scheduled job. A `HELD` `SeatAllocation`
 
 `SeatAllocation` has a unique index on `(showId, seatId)`. Holding a seat is delete-expired-then-insert in one transaction; a losing concurrent request hits the unique constraint (Postgres `23505`, surfaced by Prisma as `P2002`) and gets translated to `409` with the specific seat ids that were lost. The unique index — not an application-level lock or a higher Prisma isolation level — is what makes this safe under real concurrent serverless invocations, which is why `scripts/concurrency-test.ts` is run against the live Vercel URL, not just localhost.
 
+## QR ticket forgery
+
+A QR code that just encodes the booking reference is trivially forgeable — anyone with a QR generator and a guessed or overheard reference can produce a "valid-looking" ticket. The QR instead encodes `<reference>.<hmac>`, where the HMAC is SHA-256 over the reference keyed by a server-only `QR_SIGNING_SECRET`; `/api/verify/[payload]` recomputes the HMAC with `crypto.timingSafeEqual` before trusting the reference at all, so a forged or tampered payload is rejected before it ever touches the database. A cancelled booking still verifies as structurally valid (correct signature) but reports `status: CANCELLED`, because a gate agent needs to distinguish "this ticket was forged" from "this ticket was real but refunded" — those are different operational responses.
+
 ## Waitlist and time-limited offers
 
 (Filled in when Phase 6 lands.)

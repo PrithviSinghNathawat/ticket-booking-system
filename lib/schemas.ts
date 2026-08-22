@@ -16,6 +16,15 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const confirmBookingSchema = z
+  .object({
+    showId: z.string().min(1),
+    contactName: z.string().min(1),
+    contactEmail: z.string().email(),
+    contactPhone: z.string().min(1),
+  })
+  .strict();
+
 export const holdRequestSchema = z
   .object({
     seatIds: z

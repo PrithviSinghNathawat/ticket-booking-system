@@ -4,7 +4,7 @@ export function SeatLegend() {
     { status: "HELD", label: "Held by others", glyph: "•" },
     { status: "BOOKED", label: "Booked", glyph: "×" },
     { status: "SELECTED", label: "Selected by you", glyph: "✓" },
-    { status: "HELD_BY_YOU", label: "Held by you", glyph: "⏱" },
+    { status: "HELD_BY_YOU", label: "Held by you", glyph: "⏱︎" },
   ];
 
   return (

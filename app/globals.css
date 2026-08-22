@@ -65,7 +65,7 @@ body {
 
 .seat-btn[data-status="BOOKED"] {
   background: var(--booked);
-  border: 3px solid #2c2620;
+  border: 5px double #2c2620;
   color: #fff;
   cursor: not-allowed;
 }

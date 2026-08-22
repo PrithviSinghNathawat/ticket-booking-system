@@ -22,6 +22,11 @@ export function Header({ session }: { session: Session | null }) {
         <Link href="/events" className="hover:underline">
           Browse
         </Link>
+        {session?.role === "CUSTOMER" && (
+          <Link href="/bookings" className="hover:underline">
+            My bookings
+          </Link>
+        )}
         {session ? (
           <>
             <span className="text-[var(--page-fg)]/70">
