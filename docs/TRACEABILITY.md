@@ -57,7 +57,7 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 |---|---|---|---|---|
 | Booking confirmation is a guarded update-then-count transaction | `POST /api/bookings` | `app/api/bookings/route.ts` | `scripts/booking-test.ts` 1, 2, 3, 4 | Done |
 | `BookingSeat` snapshots category/price at booking time | same | `prisma/schema.prisma` | `scripts/booking-test.ts` 1; `scripts/organiser-test.ts` 5 (price change doesn't rewrite history) | Done |
-| Booking reference collision retries once | same | same | code path exists; not separately fault-injected | Partial — collision is astronomically unlikely with the current reference generator, so the retry path itself has no dedicated test forcing a real collision |
+| Booking reference collision retries once | same | same | `scripts/booking-test.ts` 8 (fault-injected via `FORCE_BOOKING_REFERENCE_FOR_TEST`/`FORCE_BOOKING_REFERENCE_USES`, isolated run) | Done |
 | QR encodes `<reference>.<hmac>`, tamper-evident | — | `lib/qr.ts` | `scripts/booking-test.ts` 5 | Done |
 | `GET /api/verify/[payload]` reports forged vs. cancelled distinctly | `GET /api/verify/[payload]` | `app/api/verify/[payload]/route.ts` | `scripts/booking-test.ts` 5 | Done |
 | Email never blocks or fails a booking | — | `lib/mail.ts` (`after()`, try/catch) | `scripts/booking-test.ts` 7; manual (Phase 5: unreachable SMTP host, response in 1.8s) | Done |

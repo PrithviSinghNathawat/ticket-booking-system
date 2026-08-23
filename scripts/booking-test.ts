@@ -276,6 +276,59 @@ async function scenarioEmailFailureIsolation(showId: string, seatIds: string[]) 
   return { userIds: [user.userId], bookingId: booking!.id };
 }
 
+async function scenarioReferenceCollision(showId: string, seatIds: string[]) {
+  console.log(
+    "\n8. Reference collision retry (requires the server running with FORCE_BOOKING_REFERENCE_FOR_TEST and FORCE_BOOKING_REFERENCE_USES=2)"
+  );
+
+  await prisma.seatAllocation.deleteMany({ where: { showId, seatId: { in: seatIds } } });
+
+  const userA = await registerRacer(`booking-s8-a-${Date.now()}@ticketing.test`);
+  const holdA = await postHold(showId, userA.cookie, [seatIds[0]]);
+  assert(holdA.status === 201, `user A holds a seat (got ${holdA.status})`);
+  const confirmA = await confirmBooking(showId, userA.cookie, {
+    contactName: "Collision A",
+    contactEmail: userA.email,
+    contactPhone: "+1-555-0008",
+  });
+  assert(confirmA.status === 201, `user A's booking succeeds (got ${confirmA.status})`);
+
+  const userB = await registerRacer(`booking-s8-b-${Date.now()}@ticketing.test`);
+  const holdB = await postHold(showId, userB.cookie, [seatIds[1]]);
+  assert(holdB.status === 201, `user B holds a different seat (got ${holdB.status})`);
+  const confirmB = await confirmBooking(showId, userB.cookie, {
+    contactName: "Collision B",
+    contactEmail: userB.email,
+    contactPhone: "+1-555-0009",
+  });
+  assert(confirmB.status === 201, `user B's booking retries past a reference collision and succeeds (got ${confirmB.status})`);
+
+  const refA = confirmA.body.reference as string;
+  const refB = confirmB.body.reference as string;
+  assert(!!refA && !!refB && refA !== refB, `the two bookings ended up with different references (A=${refA}, B=${refB})`);
+
+  const dupCount = await prisma.booking.count({ where: { reference: refA } });
+  assert(dupCount === 1, `no duplicate reference row exists for ${refA} (got ${dupCount})`);
+
+  const forcedRef = process.env.FORCE_BOOKING_REFERENCE_FOR_TEST;
+  if (forcedRef) {
+    assert(refA === forcedRef, `user A's booking actually used the forced reference (got ${refA}, expected ${forcedRef})`);
+    assert(
+      refB !== forcedRef,
+      `user B's booking did not end up reusing the forced reference after its retry (got ${refB})`
+    );
+  } else {
+    console.log(
+      "  (FORCE_BOOKING_REFERENCE_FOR_TEST not set for this run - the collision path was not actually exercised)"
+    );
+  }
+
+  return {
+    userIds: [userA.userId, userB.userId],
+    bookingIds: [confirmA.body.id as string, confirmB.body.id as string],
+  };
+}
+
 async function main() {
   const ttlMs = Number(process.env.HOLD_TTL_SECONDS ?? 5) * 1000;
   console.log(`Running booking test against BASE_URL=${BASE_URL}, expecting HOLD_TTL_SECONDS=${ttlMs / 1000}`);
@@ -293,28 +346,47 @@ async function main() {
     return ids;
   }
 
+  const isolatedCollisionRun = !!process.env.FORCE_BOOKING_REFERENCE_FOR_TEST;
+
   try {
-    const r1 = await scenarioHappyPath(show.id, pick([0, 1]));
-    allUserIds.push(...r1.userIds);
-    allBookingIds.push(r1.bookingId);
+    if (isolatedCollisionRun) {
+      console.log(
+        "FORCE_BOOKING_REFERENCE_FOR_TEST is set - running scenario 8 in isolation. " +
+          "Every other booking-creating scenario would also collide against the same forced " +
+          "reference and exhaust the retry budget, so 1-7 are skipped for this run."
+      );
+      const r8 = await scenarioReferenceCollision(show.id, pick([12, 13]));
+      allUserIds.push(...r8.userIds);
+      allBookingIds.push(...r8.bookingIds);
+    } else {
+      const r1 = await scenarioHappyPath(show.id, pick([0, 1]));
+      allUserIds.push(...r1.userIds);
+      allBookingIds.push(r1.bookingId);
 
-    allUserIds.push(...(await scenarioLapsedHold(show.id, pick([2, 3]), ttlMs)));
+      allUserIds.push(...(await scenarioLapsedHold(show.id, pick([2, 3]), ttlMs)));
 
-    allUserIds.push(...(await scenarioNotYourHold(show.id, pick([4, 5]))));
+      allUserIds.push(...(await scenarioNotYourHold(show.id, pick([4, 5]))));
 
-    const r4 = await scenarioDoubleSubmit(show.id, pick([6, 7]));
-    allUserIds.push(...r4.userIds);
-    allBookingIds.push(r4.bookingId);
+      const r4 = await scenarioDoubleSubmit(show.id, pick([6, 7]));
+      allUserIds.push(...r4.userIds);
+      allBookingIds.push(r4.bookingId);
 
-    await scenarioVerify(r1.reference);
+      await scenarioVerify(r1.reference);
 
-    const r6 = await scenarioDryRun(show.id, pick([8, 9]));
-    allUserIds.push(...r6.userIds);
-    allBookingIds.push(r6.bookingId);
+      const r6 = await scenarioDryRun(show.id, pick([8, 9]));
+      allUserIds.push(...r6.userIds);
+      allBookingIds.push(r6.bookingId);
 
-    const r7 = await scenarioEmailFailureIsolation(show.id, pick([10, 11]));
-    allUserIds.push(...r7.userIds);
-    allBookingIds.push(r7.bookingId);
+      const r7 = await scenarioEmailFailureIsolation(show.id, pick([10, 11]));
+      allUserIds.push(...r7.userIds);
+      allBookingIds.push(r7.bookingId);
+
+      console.log(
+        "\n8. Reference collision retry - skipped in this run (needs a separate, isolated " +
+          "invocation with FORCE_BOOKING_REFERENCE_FOR_TEST set, since it would otherwise " +
+          "collide against every other booking this suite creates)"
+      );
+    }
   } finally {
     console.log("\nCleaning up throwaway users, bookings, and allocations...");
     await prisma.seatAllocation.deleteMany({ where: { showId: show.id, seatId: { in: allSeatIds } } });
