@@ -113,12 +113,13 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 
 | Item | Status |
 |---|---|
-| `README.md` — setup, env table, API table, schema description, TTL/waitlist prose, credentials, test coverage | Done — full pass, Phase 9 |
+| `README.md` — setup, env table, API table, schema description, TTL/waitlist prose, credentials, test coverage, screenshots | Done — full pass, Phase 9; screenshots added Phase 10 |
 | `.env.example` | Done — updated every phase a new var was introduced |
-| `DESIGN.md`, ≤800 words | Done — 799 words as of Phase 9 (still a draft for review, not final) |
-| `docs/ARCHITECTURE.md` — decisions, state machines, sequence diagrams, ERD, layer diagram, request-lifecycle walkthrough | Done — Phase 9 |
+| `DESIGN.md`, ≤800 words | Pending — Phase 10 asked for a supplied rewrite that was referenced but not actually included in the phase prompt; still the Phase 9 version (799 words) until that text is provided |
+| `docs/ARCHITECTURE.md` — decisions, state machines, sequence diagrams, ERD, layer diagram, request-lifecycle walkthrough | Done — Phase 9; Phase 10 fixed two diagrams that failed to render on GitHub |
 | `docs/API.md` — every route, role, body, response, error codes | Done — Phase 9 |
 | `docs/TRACEABILITY.md` | Done — this file |
+| `docs/ENGINEERING-LOG.md` — bugs found by testing, symptom/root cause/fix | Done — Phase 10 |
 | Public GitHub repo, `main` branch, live Vercel URL | Done |
-| Zip via `git archive` | Not started |
-| Screenshots | Not started — Claude Code cannot capture a live browser session; shot list and wired-up paths are in `docs/images/README.md` |
+| Zip via `git archive` | Done — Phase 10; verified it unzips into a working tree with no `node_modules`/`.env`/`.next`/`.vscode`/`.idea` |
+| Screenshots | Done — Phase 10, `scripts/screenshots.ts` (Playwright, temporary dependency) against the production URL; all 7 in `docs/images/` |
