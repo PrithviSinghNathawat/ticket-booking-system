@@ -2,7 +2,7 @@
 
 ## Seat hold and TTL
 
-Expiry is a property of the data rather than a scheduled job. Every `HELD` row in `SeatAllocation` carries an `expiresAt`, and every code path deciding whether a seat is available treats a held row whose `expiresAt` has passed as free. That definition lives in one place, `lib/allocations.ts`, reused by the seat map, hold creation, the guard preventing a second concurrent hold, the holds summary and the sweep, so the boundary cannot drift between call sites.
+Expiry is a property of the data rather than a scheduled job. Every `HELD` row in `SeatAllocation` carries an `expiresAt`, and every code path deciding whether a seat is available treats a held row whose `expiresAt` has passed as free. That definition lives in one place, `lib/allocations.ts`, reused by the seat map, hold creation, the second-hold guard, the holds summary, and the sweep, so the boundary cannot drift between call sites.
 
 A daily Vercel cron calls `POST /api/cron/sweep`, which deletes rows that have already lapsed. This is table hygiene, not enforcement: the Hobby plan runs cron at most once a day, nowhere near the granularity a ten-minute TTL requires. The guarantee comes entirely from lazy evaluation — an expired hold becomes invisible to every reader the moment it lapses, whatever the sweep last did.
 

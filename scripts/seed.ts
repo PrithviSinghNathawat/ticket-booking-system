@@ -157,50 +157,55 @@ async function main() {
     return chunks;
   }
 
-  const soldOutBookings = [
-    ...chunk(premiumSeats, SEATS_PER_BOOKING).map((seats) => ({ seats, categoryName: "Premium", price: 500 })),
-    ...chunk(standardSeats, SEATS_PER_BOOKING).map((seats) => ({ seats, categoryName: "Standard", price: 250 })),
-  ].map((group, index) => ({
-    reference: `BK-SEEDFULL${index + 1}`,
-    user: customers[index % customers.length],
-    ...group,
-  }));
+  async function fillShow(showId: string, referencePrefix: string) {
+    const bookings = [
+      ...chunk(premiumSeats, SEATS_PER_BOOKING).map((seats) => ({ seats, categoryName: "Premium", price: 500 })),
+      ...chunk(standardSeats, SEATS_PER_BOOKING).map((seats) => ({ seats, categoryName: "Standard", price: 250 })),
+    ].map((group, index) => ({
+      reference: `${referencePrefix}${index + 1}`,
+      user: customers[index % customers.length],
+      ...group,
+    }));
 
-  for (const { reference, user, seats, categoryName, price } of soldOutBookings) {
-    const booking = await prisma.booking.create({
-      data: {
-        reference,
-        showId: showSoldOut.id,
-        userId: user.id,
-        status: "CONFIRMED",
-        totalAmount: price * seats.length,
-        contactName: user.name,
-        contactEmail: user.email,
-        contactPhone: "+1-555-0100",
-      },
-    });
-
-    for (const seat of seats) {
-      await prisma.seatAllocation.create({
+    for (const { reference, user, seats, categoryName, price } of bookings) {
+      const booking = await prisma.booking.create({
         data: {
-          showId: showSoldOut.id,
-          seatId: seat.id,
-          status: "BOOKED",
-          holderUserId: user.id,
-          bookingId: booking.id,
+          reference,
+          showId,
+          userId: user.id,
+          status: "CONFIRMED",
+          totalAmount: price * seats.length,
+          contactName: user.name,
+          contactEmail: user.email,
+          contactPhone: "+1-555-0100",
         },
       });
 
-      await prisma.bookingSeat.create({
-        data: {
-          bookingId: booking.id,
-          seatId: seat.id,
-          categoryName,
-          price,
-        },
-      });
+      for (const seat of seats) {
+        await prisma.seatAllocation.create({
+          data: {
+            showId,
+            seatId: seat.id,
+            status: "BOOKED",
+            holderUserId: user.id,
+            bookingId: booking.id,
+          },
+        });
+
+        await prisma.bookingSeat.create({
+          data: {
+            bookingId: booking.id,
+            seatId: seat.id,
+            categoryName,
+            price,
+          },
+        });
+      }
     }
   }
+
+  await fillShow(showSoldOut.id, "BK-SEEDFULL");
+  await fillShow(showConcert.id, "BK-SEEDFULL2-");
 
   console.log("\nSeed complete. Credentials:\n");
   console.log(`ADMIN        ${CREDENTIALS.admin.email} / ${CREDENTIALS.admin.password}`);
@@ -208,7 +213,9 @@ async function main() {
   for (const c of CREDENTIALS.customers) {
     console.log(`CUSTOMER     ${c.email} / ${c.password}`);
   }
-  console.log(`\nSold-out show for waitlist demo: showId=${showSoldOut.id} (event: The Last Reel, ${inDays(3).toISOString()})`);
+  console.log(`\nSold-out shows for waitlist demo:`);
+  console.log(`  showId=${showSoldOut.id} (event: The Last Reel, ${inDays(3).toISOString()})`);
+  console.log(`  showId=${showConcert.id} (event: Neon Nights, ${inDays(5).toISOString()})`);
   console.log(`admin=${admin.id} organiser=${organiser.id}`);
 }
 

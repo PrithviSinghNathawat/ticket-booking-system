@@ -47,6 +47,7 @@ Shot list and file names: [`docs/images/README.md`](docs/images/README.md). Scre
 - [Seat holds, TTL, and the sweep](#seat-holds-ttl-and-the-sweep)
 - [Waitlist and time-limited offers](#waitlist-and-time-limited-offers)
 - [Database schema](#database-schema)
+- [Evaluation criteria](#evaluation-criteria)
 - [Further documentation](#further-documentation)
 - [Known limitations](#known-limitations)
 
@@ -165,11 +166,24 @@ Joining a sold-out category's waitlist is `POST /api/shows/[id]/waitlist`. When 
 
 Full ERD with every unique constraint called out: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#entity-relationship-diagram). The short version: `User`, `Venue` → `SeatCategory` → `Seat`, `Event` → `Show` → `ShowPrice`, `SeatAllocation` (the hold/booked ledger), `Booking` → `BookingSeat` (price snapshots), `WaitlistEntry` → `WaitlistOffer`.
 
+## Evaluation criteria
+
+A quick index for grading against a rubric, distinct from the requirement-by-requirement [traceability matrix](docs/TRACEABILITY.md#deliverables):
+
+| Criterion | Where it lives | Test |
+|---|---|---|
+| Seat hold TTL and auto-release | [`lib/allocations.ts`](lib/allocations.ts) (lazy expiry), README § [Seat holds, TTL, and the sweep](#seat-holds-ttl-and-the-sweep), [`DESIGN.md`](DESIGN.md) | `npm run ttl-test` |
+| Concurrency protection | `@@unique([showId, seatId])` in [`prisma/schema.prisma`](prisma/schema.prisma), [`app/api/shows/[showId]/holds/route.ts`](<app/api/shows/[showId]/holds/route.ts>), [`DESIGN.md`](DESIGN.md) | `npm run concurrency-test` |
+| Waitlist auto-assignment and offers | README § [Waitlist and time-limited offers](#waitlist-and-time-limited-offers), [`app/api/shows/[showId]/waitlist/route.ts`](<app/api/shows/[showId]/waitlist/route.ts>), [`app/api/waitlist/claim/route.ts`](app/api/waitlist/claim/route.ts), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) state machine | `npm run waitlist-test` |
+| Seat map data model and status | `SeatAllocation` in [`prisma/schema.prisma`](prisma/schema.prisma), [`app/api/shows/[showId]/seats/route.ts`](<app/api/shows/[showId]/seats/route.ts>), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#entity-relationship-diagram) | `npm run booking-test`, `GET /api/shows/{showId}/seats` (see [Testing](#testing)) |
+| QR generation and email delivery | [`lib/qr.ts`](lib/qr.ts), [`lib/mail.ts`](lib/mail.ts), booking confirmation in [`app/api/bookings/route.ts`](app/api/bookings/route.ts) | `npm run booking-test`, `npm run mail-check` |
+| API design, code structure, docs | [`docs/API.md`](docs/API.md), [`lib/errors.ts`](lib/errors.ts), `app/api/**` | `npm run test:all` |
+
 ## Further documentation
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — design decisions traced to constraints, state machines, sequence diagrams, the ERD, a request-lifecycle walkthrough
 - [`docs/API.md`](docs/API.md) — every route: method, required role, request body, success response, every error code and what produces it
-- [`DESIGN.md`](DESIGN.md) — seat hold TTL, concurrency prevention, waitlist auto-assignment, time-limited offers (802 words; QR forgery resistance and the region-mismatch/`P2028` story live in `docs/ARCHITECTURE.md` instead)
+- [`DESIGN.md`](DESIGN.md) — seat hold TTL, concurrency prevention, waitlist auto-assignment, time-limited offers (798 words; QR forgery resistance and the region-mismatch/`P2028` story live in `docs/ARCHITECTURE.md` instead)
 - [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) — every SRS requirement mapped to its route, file, and test
 - [`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md) — bugs found by testing rather than by writing: symptom, root cause, fix
 
