@@ -37,6 +37,7 @@ export async function GET(request: Request) {
   const events = await prisma.event.findMany({
     where: {
       ...(type ? { type: type as "MOVIE" | "CONCERT" } : {}),
+      NOT: { title: { endsWith: "(internal)" } },
       ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
       shows: { some: showWhere },
     },
