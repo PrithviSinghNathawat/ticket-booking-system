@@ -61,7 +61,7 @@ export async function POST(
   const soldOut = await isCategorySoldOut(showId, categoryId, now);
   if (!soldOut) {
     return NextResponse.json(
-      { error: "Seats are currently available in this category — no need to wait" },
+      { error: "Seats are currently available in this category, no need to wait" },
       { status: 400 }
     );
   }

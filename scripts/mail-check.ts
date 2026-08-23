@@ -5,8 +5,8 @@ async function main() {
   const pass = process.env.GMAIL_APP_PASSWORD;
 
   if (!user || !pass) {
-    console.error("GMAIL_USER or GMAIL_APP_PASSWORD is not set");
-    process.exit(1);
+    console.log("SKIPPED: GMAIL_USER or GMAIL_APP_PASSWORD is not set. This script sends a real email via SMTP, so it's opt-in and does not fail the suite when credentials aren't configured.");
+    return;
   }
 
   const transporter = nodemailer.createTransport({

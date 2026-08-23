@@ -48,5 +48,8 @@ next-env.d.ts
 .vscode
 .idea
 
+# claude code runtime state (session-local, not project config)
+.claude
+
 # logs
 *.log

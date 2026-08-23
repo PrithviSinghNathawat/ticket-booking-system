@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { LinkButton } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type ClaimState =
   | { kind: "loading" }
@@ -46,32 +48,33 @@ export function ClaimClient({ token }: { token: string }) {
   }, [token, router]);
 
   if (state.kind === "loading") {
-    return <main className="flex-1 p-8">Checking your offer...</main>;
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center gap-3 p-8">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-4 w-72" />
+      </main>
+    );
   }
 
   if (state.kind === "not-found") {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-xl font-semibold">Offer not found</h1>
-        <p className="max-w-sm text-[var(--page-fg)]/70">
-          This claim link doesn&apos;t belong to your account, or it doesn&apos;t exist.
-        </p>
-        <Link href="/events" className="rounded border border-[var(--border-subtle)] px-4 py-2 text-sm">
-          Browse events
-        </Link>
+      <main className="flex flex-1 items-center justify-center p-8">
+        <EmptyState
+          title="Offer not found"
+          body="This claim link doesn't belong to your account, or it doesn't exist."
+          action={<LinkButton href="/events" variant="secondary">Browse events</LinkButton>}
+        />
       </main>
     );
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-      <h1 className="text-xl font-semibold">
-        {state.kind === "expired" ? "This offer has expired" : "Something went wrong"}
-      </h1>
-      <p className="max-w-sm text-[var(--page-fg)]/70">{state.message}</p>
-      <Link href="/waitlist" className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)]">
-        View your waitlist entries
-      </Link>
+    <main className="flex flex-1 items-center justify-center p-8">
+      <EmptyState
+        title={state.kind === "expired" ? "This offer has expired" : "Something went wrong"}
+        body={state.message}
+        action={<LinkButton href="/waitlist">View your waitlist entries</LinkButton>}
+      />
     </main>
   );
 }

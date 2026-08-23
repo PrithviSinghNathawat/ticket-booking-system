@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
 
 export function CreateEventForm() {
   const router = useRouter();
@@ -35,39 +39,38 @@ export function CreateEventForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] p-4">
-      <h2 className="font-semibold">Create an event</h2>
-      <input
-        type="text"
-        placeholder="Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        required
-        className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-      />
-      <select
-        value={type}
-        onChange={(e) => setType(e.target.value as "MOVIE" | "CONCERT")}
-        className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-      >
-        <option value="MOVIE">Movie</option>
-        <option value="CONCERT">Concert</option>
-      </select>
-      <textarea
-        placeholder="Description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        required
-        className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-      />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-fit rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] disabled:opacity-50"
-      >
-        {submitting ? "Creating..." : "Create event"}
-      </button>
+    <form onSubmit={handleSubmit}>
+      <Card className="flex flex-col gap-3">
+        <h2 className="font-semibold">Create an event</h2>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Title</span>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            className="rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+          />
+        </label>
+        <Select label="Type" value={type} onChange={(e) => setType(e.target.value as "MOVIE" | "CONCERT")}>
+          <option value="MOVIE">Movie</option>
+          <option value="CONCERT">Concert</option>
+        </Select>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Description</span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            required
+            rows={3}
+            className="rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+          />
+        </label>
+        {error && <Notice tone="error">{error}</Notice>}
+        <Button type="submit" disabled={submitting} className="w-fit">
+          {submitting ? "Creating..." : "Create event"}
+        </Button>
+      </Card>
     </form>
   );
 }

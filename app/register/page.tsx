@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -34,10 +38,12 @@ export default function RegisterPage() {
 
     if (!res.ok) {
       if (res.status === 403) {
-        setError("Invalid invite code");
+        setError("That invite code isn't valid. Double-check it with whoever gave it to you.");
+      } else if (res.status === 409) {
+        setError("An account with this email already exists. Try logging in instead.");
       } else {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "Registration failed");
+        setError(body.error ?? "Registration failed, please try again.");
       }
       return;
     }
@@ -48,78 +54,61 @@ export default function RegisterPage() {
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center p-8">
-      <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-3">
-        <h1 className="text-xl font-semibold">Create an account</h1>
+      <Card className="w-full max-w-sm">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <h1 className="text-xl font-semibold">Create an account</h1>
 
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="rounded border border-[var(--border-subtle)] px-3 py-2"
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="rounded border border-[var(--border-subtle)] px-3 py-2"
-        />
-        <input
-          type="password"
-          placeholder="Password (min 8 characters)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
-          className="rounded border border-[var(--border-subtle)] px-3 py-2"
-        />
-
-        <fieldset className="flex gap-4 text-sm">
-          <legend className="mb-1 text-[var(--page-fg)]/70">I am a</legend>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              name="role"
-              checked={role === "CUSTOMER"}
-              onChange={() => setRole("CUSTOMER")}
-            />
-            Customer
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              name="role"
-              checked={role === "ORGANISER"}
-              onChange={() => setRole("ORGANISER")}
-            />
-            Organiser
-          </label>
-        </fieldset>
-
-        {role === "ORGANISER" && (
-          <input
-            type="text"
-            placeholder="Organiser invite code"
-            value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
+          <Input label="Name" type="text" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
-            className="rounded border border-[var(--border-subtle)] px-3 py-2"
+            minLength={8}
+            placeholder="min 8 characters"
           />
-        )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+          <fieldset className="flex gap-4 text-sm">
+            <legend className="mb-1 text-[var(--page-fg)]/70">I am a</legend>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="role"
+                checked={role === "CUSTOMER"}
+                onChange={() => setRole("CUSTOMER")}
+              />
+              Customer
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="role"
+                checked={role === "ORGANISER"}
+                onChange={() => setRole("ORGANISER")}
+              />
+              Organiser
+            </label>
+          </fieldset>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--accent-fg)] disabled:opacity-50"
-        >
-          {loading ? "Creating account..." : "Create account"}
-        </button>
-      </form>
+          {role === "ORGANISER" && (
+            <Input
+              label="Organiser invite code"
+              type="text"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              required
+            />
+          )}
+
+          {error && <Notice tone="error">{error}</Notice>}
+
+          <Button type="submit" disabled={loading}>
+            {loading ? "Creating account..." : "Create account"}
+          </Button>
+        </form>
+      </Card>
     </main>
   );
 }

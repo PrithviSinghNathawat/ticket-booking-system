@@ -39,15 +39,27 @@ body {
 }
 
 .seat-btn[data-status="AVAILABLE"] {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
   border: 1.5px solid var(--border-subtle);
   color: var(--panel-dark-fg);
   cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
 }
 
 .seat-btn[data-status="AVAILABLE"]:hover {
   border-color: var(--accent);
   transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.seat-btn[data-status="AVAILABLE"]:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.seat-btn[data-status="SELECTED"]:active,
+.seat-btn[data-status="HELD_BY_YOU"]:active {
+  transform: translateY(1px);
 }
 
 .seat-btn[data-status="HELD"] {
@@ -75,6 +87,7 @@ body {
   border: 3px solid #a97a1a;
   color: var(--accent-fg);
   cursor: pointer;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
 }
 
 .seat-btn[data-status="HELD_BY_YOU"] {
@@ -97,4 +110,50 @@ body {
   animation: flash-taken 1.5s ease-in-out 2;
   outline: 2px solid transparent;
   outline-offset: 2px;
+}
+
+.ticket-stub-divider {
+  position: relative;
+  border-top: 2px dashed var(--border-subtle);
+}
+
+.ticket-stub-divider::before,
+.ticket-stub-divider::after {
+  content: "";
+  position: absolute;
+  top: -0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--page-bg);
+}
+
+.ticket-stub-divider::before {
+  left: -0.75rem;
+}
+
+.ticket-stub-divider::after {
+  right: -0.75rem;
+}
+
+@media (min-width: 640px) {
+  .ticket-stub-divider {
+    border-top: none;
+    border-left: 2px dashed var(--border-subtle);
+  }
+
+  .ticket-stub-divider::before,
+  .ticket-stub-divider::after {
+    left: -0.75rem;
+    top: auto;
+  }
+
+  .ticket-stub-divider::before {
+    top: -0.75rem;
+  }
+
+  .ticket-stub-divider::after {
+    bottom: -0.75rem;
+    top: auto;
+  }
 }

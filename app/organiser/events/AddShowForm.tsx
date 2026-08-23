@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Input";
+import { Notice } from "@/components/ui/Notice";
 
 type Venue = {
   id: string;
@@ -64,26 +67,24 @@ export function AddShowForm({ eventId }: { eventId: string }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border border-[var(--border-subtle)] p-3 text-sm">
       <h3 className="font-semibold">Add a show</h3>
-      <select
-        value={venueId}
-        onChange={(e) => handleVenueChange(e.target.value)}
-        required
-        className="rounded border border-[var(--border-subtle)] px-2 py-1"
-      >
+      <Select label="Venue" value={venueId} onChange={(e) => handleVenueChange(e.target.value)} required>
         <option value="">Select venue</option>
         {venues.map((v) => (
           <option key={v.id} value={v.id}>
             {v.name}
           </option>
         ))}
-      </select>
-      <input
-        type="datetime-local"
-        value={startsAt}
-        onChange={(e) => setStartsAt(e.target.value)}
-        required
-        className="rounded border border-[var(--border-subtle)] px-2 py-1"
-      />
+      </Select>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">Starts at</span>
+        <input
+          type="datetime-local"
+          value={startsAt}
+          onChange={(e) => setStartsAt(e.target.value)}
+          required
+          className="rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+        />
+      </label>
       {selectedVenue && (
         <div className="flex flex-col gap-1">
           {selectedVenue.categories.map((c) => (
@@ -97,20 +98,16 @@ export function AddShowForm({ eventId }: { eventId: string }) {
                 value={prices[c.id] ?? ""}
                 onChange={(e) => setPrices((prev) => ({ ...prev, [c.id]: e.target.value }))}
                 required
-                className="w-28 rounded border border-[var(--border-subtle)] px-2 py-1"
+                className="w-28 rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
               />
             </label>
           ))}
         </div>
       )}
-      {error && <p className="text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={submitting || !selectedVenue}
-        className="w-fit rounded bg-[var(--accent)] px-3 py-1 font-semibold text-[var(--accent-fg)] disabled:opacity-50"
-      >
+      {error && <Notice tone="error">{error}</Notice>}
+      <Button type="submit" disabled={submitting || !selectedVenue} className="w-fit px-3 py-1">
         {submitting ? "Adding..." : "Add show"}
-      </button>
+      </Button>
     </form>
   );
 }

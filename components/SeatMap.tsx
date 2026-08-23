@@ -81,10 +81,10 @@ export function SeatMap({
                         disabled={!clickable}
                         title={
                           clickable
-                            ? `Row ${rowLabel}, seat ${seat.seatNumber}`
+                            ? `Row ${rowLabel}, seat ${seat.seatNumber} · ${seat.categoryName} · ${seat.price}`
                             : seat.status === "AVAILABLE" && selectionDisabledReason
-                              ? `Row ${rowLabel}, seat ${seat.seatNumber} — ${selectionDisabledReason}`
-                              : `Row ${rowLabel}, seat ${seat.seatNumber} — ${STATUS_LABEL[status]}`
+                              ? `Row ${rowLabel}, seat ${seat.seatNumber}: ${selectionDisabledReason}`
+                              : `Row ${rowLabel}, seat ${seat.seatNumber}: ${STATUS_LABEL[status]}`
                         }
                         aria-label={`Row ${rowLabel}, seat ${seat.seatNumber}, ${seat.categoryName}, ${STATUS_LABEL[status]}`}
                         onClick={() => onToggleSeat(seat)}

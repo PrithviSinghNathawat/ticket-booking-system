@@ -15,7 +15,9 @@
     "booking-test": "tsx scripts/booking-test.ts",
     "waitlist-test": "tsx scripts/waitlist-test.ts",
     "rbac-test": "tsx scripts/rbac-test.ts",
-    "organiser-test": "tsx scripts/organiser-test.ts"
+    "organiser-test": "tsx scripts/organiser-test.ts",
+    "mail-check": "tsx scripts/mail-check.ts",
+    "test:all": "tsx scripts/test-all.ts"
   },
   "prisma": {
     "seed": "tsx scripts/seed.ts"

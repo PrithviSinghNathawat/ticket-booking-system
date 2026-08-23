@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Select } from "@/components/ui/Input";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 type EventListItem = {
   eventId: string;
@@ -41,35 +44,40 @@ export default function EventsPage() {
     <main className="flex flex-1 flex-col gap-6 p-6">
       <h1 className="text-2xl font-bold">Browse events</h1>
 
-      <div className="flex flex-wrap gap-3">
-        <input
-          type="text"
-          placeholder="Search by title"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        />
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        >
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">Search</span>
+          <input
+            type="text"
+            placeholder="Title"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-3 py-2 text-sm placeholder:text-[var(--page-fg)]/40 focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+          />
+        </label>
+        <Select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">All types</option>
           <option value="MOVIE">Movies</option>
           <option value="CONCERT">Concerts</option>
-        </select>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        />
+        </Select>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">Date</span>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+          />
+        </label>
       </div>
 
       {!events ? (
-        <p>Loading…</p>
+        <ListSkeleton />
       ) : events.length === 0 ? (
-        <p className="text-[var(--page-fg)]/70">No events match those filters.</p>
+        <EmptyState
+          title="No events match those filters"
+          body="Try clearing the search, type, or date filter."
+        />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => (

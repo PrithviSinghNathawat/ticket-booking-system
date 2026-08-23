@@ -1,6 +1,6 @@
 # Traceability matrix
 
-One row per requirement bullet from the assignment's Scope of Work and Technical Expectations. Built at Phase 7, not Phase 8 — late enough that most rows are `Done`, early enough that gaps are still fixable. Three rows (Admin venue management, Organiser event/show creation, Organiser revenue summary) were `Not started` through Phases 1-6; Phase 7 closes them.
+One row per requirement bullet from the assignment's Scope of Work and Technical Expectations. Built at Phase 7 and kept current through Phase 9. Three rows (Admin venue management, Organiser event/show creation, Organiser revenue summary) were `Not started` through Phases 1-6; Phase 7 closes them. `/demo` is the one row that remains genuinely `Partial`.
 
 Status legend: **Done** — implemented and covered by an automated test. **Partial** — implemented but with a known, documented gap. **Not started** — no implementation.
 
@@ -48,7 +48,7 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 | Claiming routes into the existing checkout flow, not a new hold | — | `app/api/bookings/route.ts` (claims the matching `PENDING` offer inside the confirm transaction) | `scripts/waitlist-test.ts` 5 | Done |
 | Cascade is idempotent/re-entrant, called from every write path, never the poll | `processWaitlist(showId)` | `lib/waitlist.ts` | `scripts/waitlist-test.ts` 6, 8 | Done |
 | Concurrent cancellations never double-offer the same entry or seat | — | `lib/waitlist.ts` (`offerFreedSeatsBatch`, guarded `updateMany`) | `scripts/waitlist-test.ts` 8 | Done |
-| Cancellation of an 8-seat booking is fast even under real network latency | — | `lib/waitlist.ts`, `app/api/bookings/[reference]/cancel/route.ts` | manual timing (Phase 6: ~17s on production; Phase 7 A1: batched to 4 set-based statements, re-measured below) | Done |
+| Cancellation of an 8-seat booking is fast even under real network latency | — | `lib/waitlist.ts`, `app/api/bookings/[reference]/cancel/route.ts` | manual timing (Phase 6: ~5.7s, traced in Phase 8 A1 to a Vercel/Neon region mismatch, not statement count; pinning `vercel.json` regions to `sin1` brought it to ~170ms-1s) | Done |
 | Durable-queue tradeoff is named, not hidden | — | `DESIGN.md` | — | Done |
 
 ## Booking, QR, and email
@@ -74,7 +74,7 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 | Polling every 3s, paused on `document.hidden`, backoff on error | — | `hooks/useSeatMapPolling.ts` | manual | Done |
 | Restoring an existing hold on mount/refresh | `/shows/[showId]` | `app/shows/[showId]/*` | manual | Done |
 | Browse/filter events server-side | `GET /api/events` | `app/api/events/route.ts` | manual | Done |
-| `/demo` concurrency-visualization page | — | — | — | **Not started** — explicitly deferred at Phase 4 per its own instruction ("stop after B5... do not start B6 at the cost of Phase 5") and never revisited since |
+| `/demo` concurrency-visualization page | — | — | — | **Partial** — deferred at Phase 4 and still not built as of Phase 9; the concurrency guarantee it would visualise is fully covered by `scripts/concurrency-test.ts`, just not as a browser-visible page |
 
 ## Admin venue management *(new this phase)*
 
@@ -109,12 +109,16 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 | Owner-or-admin access; cross-tenant read → `404` | same | same | `scripts/rbac-test.ts` | Done |
 | `/organiser/events/[id]` UI: per-show table + event total | `/organiser/events/[id]` | `app/organiser/events/[id]/page.tsx` | manual | Done |
 
-## Deliverables (tracked, not yet all due)
+## Deliverables
 
 | Item | Status |
 |---|---|
-| `README.md` — setup, env table, API table, schema description, TTL/waitlist prose | Partial — grows incrementally each phase; full pass is Phase 8 |
+| `README.md` — setup, env table, API table, schema description, TTL/waitlist prose, credentials, test coverage | Done — full pass, Phase 9 |
 | `.env.example` | Done — updated every phase a new var was introduced |
-| `DESIGN.md`, ≤800 words | Partial — currently over budget with six phases of notes; word-count trim is a Phase 8 task |
+| `DESIGN.md`, ≤800 words | Done — 799 words as of Phase 9 (still a draft for review, not final) |
+| `docs/ARCHITECTURE.md` — decisions, state machines, sequence diagrams, ERD, layer diagram, request-lifecycle walkthrough | Done — Phase 9 |
+| `docs/API.md` — every route, role, body, response, error codes | Done — Phase 9 |
+| `docs/TRACEABILITY.md` | Done — this file |
 | Public GitHub repo, `main` branch, live Vercel URL | Done |
-| Zip via `git archive` | Not started — Phase 8 |
+| Zip via `git archive` | Not started |
+| Screenshots | Not started — Claude Code cannot capture a live browser session; shot list and wired-up paths are in `docs/images/README.md` |

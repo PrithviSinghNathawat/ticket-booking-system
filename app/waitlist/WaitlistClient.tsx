@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import { CountdownTimer } from "@/components/CountdownTimer";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 type WaitlistEntry = {
   id: string;
@@ -43,7 +45,12 @@ export function WaitlistClient() {
   }
 
   if (!entries) {
-    return <main className="flex-1 p-8">Loading...</main>;
+    return (
+      <main className="flex flex-1 flex-col gap-6 p-6">
+        <h1 className="text-2xl font-bold">Your waitlist</h1>
+        <ListSkeleton rows={2} />
+      </main>
+    );
   }
 
   return (
@@ -51,7 +58,11 @@ export function WaitlistClient() {
       <h1 className="text-2xl font-bold">Your waitlist</h1>
 
       {entries.length === 0 ? (
-        <p className="text-[var(--page-fg)]/70">You&apos;re not waiting for anything right now.</p>
+        <EmptyState
+          title="You're not waiting for anything right now"
+          body="Sold-out shows offer a waitlist. Join one from its seat map and you'll see it here."
+          action={<LinkButton href="/events">Browse events</LinkButton>}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {entries.map((entry) => (
@@ -70,12 +81,9 @@ export function WaitlistClient() {
                   <span className="rounded bg-[var(--held)] px-2 py-0.5 text-xs font-semibold text-white">
                     Position {entry.position}
                   </span>
-                  <button
-                    onClick={() => handleLeave(entry.showId, entry.categoryId)}
-                    className="rounded border border-[var(--border-subtle)] px-3 py-1 text-sm"
-                  >
+                  <Button variant="secondary" onClick={() => handleLeave(entry.showId, entry.categoryId)} className="px-3 py-1">
                     Leave waitlist
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -88,12 +96,9 @@ export function WaitlistClient() {
                   <span className="text-sm">
                     Claim within <CountdownTimer expiresAt={entry.offer.expiresAt} serverNow={serverNow} onExpire={load} />
                   </span>
-                  <Link
-                    href={`/waitlist/claim/${entry.offer.token}`}
-                    className="rounded bg-[var(--accent)] px-3 py-1 text-sm font-semibold text-[var(--accent-fg)]"
-                  >
+                  <LinkButton href={`/waitlist/claim/${entry.offer.token}`} className="px-3 py-1">
                     Claim seat
-                  </Link>
+                  </LinkButton>
                 </div>
               )}
             </li>

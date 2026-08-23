@@ -1,29 +1,168 @@
 # Ticket Booking Platform
 
-A movies-and-concerts ticket booking platform. Next.js 15 (App Router) + TypeScript, Neon Postgres + Prisma, deployed as a single Vercel project.
+A movies-and-concerts ticket booking platform with real seat-level concurrency: two customers racing for the same seat get one winner and one honest, specific rejection, not a double-booked seat.
 
-Live URL: https://unthinkable-two.vercel.app
+**Live: [unthinkable-two.vercel.app](https://unthinkable-two.vercel.app)**
 
-> This README is filled in incrementally as phases land. Setup steps, the full API table, and the DB schema description arrive in full in the Phase 8 deliverable pass.
+![Seat map](docs/images/seat-map.png)
+
+## Try it now
+
+No setup required — the live URL above is a real deployment against a real (Neon free-tier) database. Register your own account, or use a seeded one:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@ticketing.test` | `AdminPass123!` |
+| Organiser | `organiser@ticketing.test` | `OrganiserPass123!` |
+| Customer | `alice@ticketing.test` | `CustomerPass123!` |
+
+Two places worth going first:
+
+- **[Book a seat](https://unthinkable-two.vercel.app/events)** — browse, pick a show, hold seats, check out. The hold has a visible countdown; released seats reappear for other customers within 3 seconds.
+- **[A sold-out show](https://unthinkable-two.vercel.app/events/cmt4o4ezv004rltnkypacat2t)** — click through to the sold-out showtime and join its waitlist. Cancel a booking on that show (as any logged-in customer who holds one, or via the organiser view) to watch the offer cascade to the next person in line.
+
+The database can take a few seconds to wake up on the very first request after a quiet period — see [Known limitations](#known-limitations).
+
+**Test coverage**: seven scripts, 167 assertions, run with a single `npm run test:all` — see [Testing](#testing).
+
+## Contents
+
+- [Try it now](#try-it-now)
+- [Stack](#stack)
+- [Local setup](#local-setup)
+- [Environment variables](#environment-variables)
+- [Testing](#testing)
+- [Seat holds, TTL, and the sweep](#seat-holds-ttl-and-the-sweep)
+- [Waitlist and time-limited offers](#waitlist-and-time-limited-offers)
+- [Database schema](#database-schema)
+- [Further documentation](#further-documentation)
+- [Known limitations](#known-limitations)
+
+## Stack
+
+| Layer | Technology | Version | Why |
+|---|---|---|---|
+| Framework | Next.js, App Router | 15.5 | Route handlers and pages share one deployment, one Prisma client, one auth cookie — no separate API service to stand up or CORS to configure for a three-day, single-deployment scope |
+| Language | TypeScript | 5 | Prisma's generated types flow straight through to route handlers and components without a translation layer |
+| ORM | Prisma | 6.19 (deliberately not 7) | Migrations, a typed client, and `updateMany`-with-count-check as a first-class pattern — the mechanism the concurrency guarantees below are built on |
+| Database | Neon Postgres | — | Serverless, autosuspending, branchable — a disposable dev branch and a real production database from the same free tier, with a real unique-constraint enforcement engine underneath |
+| Styling | Tailwind CSS | 4 | Utility classes stay next to the markup they style; no separate stylesheet to keep in sync across ~20 route trees |
+| Auth | `jose` | 6.2 | Minimal, spec-correct JWT signing/verification (HS256) with no dependency weight beyond what signing a session cookie needs |
+| Passwords | `bcryptjs` | 3.0 | Pure-JS bcrypt — no native build step, which matters on Vercel's build environment |
+| Email | `nodemailer` | 9.0 | Gmail SMTP with connection pooling, sent via `after()` so a slow or failing send never blocks the booking response |
+| QR codes | `qrcode` | 1.5 | Generates the ticket QR from the HMAC-signed payload (`lib/qr.ts`) |
+| Validation | `zod` | 4.4 | Every request body is parsed once, centrally, in `lib/schemas.ts` — no hand-rolled field checks scattered through route handlers |
+| Hosting | Vercel | — | Function region pinned to `sin1` to sit next to Neon's `ap-southeast-1` — see [Known limitations](#known-limitations) for what that fixed |
+
+**9 runtime dependencies.** Kept deliberately small per the assignment's minimal-dependency guidance — every one above earns its place doing something the app cannot do without it (ORM, auth, password hashing, email, QR generation, validation); nothing is a convenience wrapper around code that would otherwise be a few lines.
+
+## Local setup
+
+Requires **Node 20+** (tested on 22.14) and a **Neon Postgres project** — free, and about two minutes to create at [neon.tech](https://neon.tech): new project, then copy the pooled and direct connection strings it gives you.
+
+```bash
+git clone https://github.com/PrithviSinghNathawat/ticket-booking-system.git
+cd ticket-booking-system
+npm install
+```
+Expected output: dependency install completes, followed by `prisma generate` running automatically (`postinstall`) — ends with `Generated Prisma Client`.
+
+```bash
+cp .env.example .env
+```
+Fill in at minimum `DATABASE_URL` and `DIRECT_URL` from Neon, and `JWT_SECRET` (any long random string — `openssl rand -hex 32` works). Everything else has a working default; see [Environment variables](#environment-variables) for which are required to boot versus which only enable optional behaviour. **Gmail credentials are not required** — `MAIL_DRY_RUN=true` is the `.env.example` default, and logs emails to the console instead of sending them.
+
+```bash
+npx prisma migrate deploy
+```
+Expected output: `4 migrations found`, `No pending migrations to apply` (or applies them on a genuinely empty database) — no errors.
+
+```bash
+npm run db:seed
+```
+Expected output: ends with a credentials block (the same table as [Try it now](#try-it-now)) and a line naming the seeded sold-out show's id.
+
+```bash
+npm run dev
+```
+Expected output: `Ready in <N>s`. Visit `http://localhost:3000`.
+
+## Environment variables
+
+| Variable | Required to boot? | Default | Purpose |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | — | Neon pooled connection string, used at runtime |
+| `DIRECT_URL` | Yes | — | Neon direct connection string, used by `prisma migrate` only |
+| `JWT_SECRET` | Yes | — | Signs session cookies (any long random string) |
+| `APP_URL` | No | `http://localhost:3000` | Base URL used to build links in emails |
+| `HOLD_TTL_SECONDS` | No | `600` | How long a seat hold lasts before lazy expiry frees it |
+| `WAITLIST_OFFER_TTL_SECONDS` | No | `900` | How long a waitlist offer stays claimable |
+| `CRON_SECRET` | No | — | Bearer token required by `POST /api/cron/sweep`; unset means the sweep endpoint always rejects, which is safe (best-effort only, see [below](#seat-holds-ttl-and-the-sweep)) |
+| `ORGANISER_SIGNUP_CODE` | No | — | Invite code required to self-register as `ORGANISER`; unset means organiser signup is always rejected |
+| `GMAIL_USER` / `GMAIL_APP_PASSWORD` | No | — | Only used when `MAIL_DRY_RUN=false`; a Gmail account with an [app password](https://myaccount.google.com/apppasswords) |
+| `MAIL_DRY_RUN` | No | `true` | When true, emails are logged instead of sent — no Gmail credentials needed to run the app or its tests |
+| `QR_SIGNING_SECRET` | No* | — | HMAC key for ticket QR codes. Not required to boot, but booking confirmation will fail without it — treat as required in practice |
+| `SMTP_HOST` | No | `smtp.gmail.com` | Override used by `scripts/booking-test.ts` to point at an unreachable host on purpose, proving email failures never fail a booking |
+| `DEMO_RECIPIENT_EMAIL` | No | — | When set, seeded customers get `you+alice@…` style addresses (Gmail `+tag` addressing) so their mail lands in one real inbox. Unset falls back to `@ticketing.test`, which does not accept mail — see [Known limitations](#known-limitations) |
+
+## Testing
+
+Seven scripts, one command:
+
+```bash
+npm run test:all
+```
+
+Runs all seven sequentially against `BASE_URL` (default `http://localhost:3000`), prints each script's own assertions live, then a combined summary, and exits non-zero if any script failed.
+
+| Script | Covers |
+|---|---|
+| `npm run concurrency-test` | N simultaneous holds on one seat resolve to exactly one winner; overlapping and non-overlapping multi-seat claims |
+| `npm run ttl-test` | Lazy expiry on read, re-claiming an expired seat, re-holding after your own expiry, the sweep's auth and idempotency |
+| `npm run booking-test` | Happy path, lapsed-hold rejection, cross-user hold rejection, double-submit, the verify endpoint, `MAIL_DRY_RUN`, email-failure isolation, and (in an isolated invocation, see below) the reference-collision retry |
+| `npm run waitlist-test` | Join/duplicate-join, cancellation offering the oldest waiter, FIFO ordering, claim-and-convert, offer expiry cascading to the next waiter, concurrent cancellations never double-offering the same seat, cancelling an already-cancelled booking, `BookingSeat` history surviving cancellation |
+| `npm run rbac-test` | Every route's role matrix — unauthenticated, wrong role, cross-tenant, owner, admin — including that cross-tenant reads return `404`, not `403` |
+| `npm run organiser-test` | Venue creation produces the exact seat/category layout, layout edits are refused once a booking exists, show-creation validation, revenue math including cancellations and historical-price stability |
+| `npm run mail-check` | A real SMTP send-and-verify against Gmail. Skips cleanly (not a failure) when `GMAIL_USER`/`GMAIL_APP_PASSWORD` aren't set — it's the one script that needs real credentials, by design |
+
+`scripts/booking-test.ts`'s reference-collision scenario needs its own isolated run (it fault-injects a fixed reference, which would collide with every other booking the full suite creates if run together):
+
+```bash
+FORCE_BOOKING_REFERENCE_FOR_TEST=BK-COLLIDE01 FORCE_BOOKING_REFERENCE_USES=2 npm run booking-test
+```
+
+`ttl-test`'s runtime scales with whatever `HOLD_TTL_SECONDS` the target server is actually configured with — fast against a dev server started with a short override (`HOLD_TTL_SECONDS=5 npm run dev`), correctly slower against production's real 600 seconds.
 
 ## Seat holds, TTL, and the sweep
 
-A held seat is a row in `SeatAllocation` with `status = HELD` and an `expiresAt` timestamp. **The ten-minute guarantee comes entirely from how that row is read, not from anything that deletes it.** Every place that decides whether a seat is available — the seat map, the hold-creation transaction, the "do you already hold something" check — treats a `HELD` row with `expiresAt` in the past as if it doesn't exist. That's a pure function of the row and the current time (`lib/allocations.ts`), so it's correct the instant the TTL lapses, with no scheduled job in the loop.
+A held seat is a row in `SeatAllocation` with `status = HELD` and an `expiresAt` timestamp. **The ten-minute guarantee comes entirely from how that row is read, not from anything that deletes it.** Every place that decides whether a seat is available treats a `HELD` row with `expiresAt` in the past as if it doesn't exist — a pure function of the row and the current time (`lib/allocations.ts`), correct the instant the TTL lapses, no scheduled job involved.
 
-`POST /api/cron/sweep`, guarded by `Authorization: Bearer <CRON_SECRET>`, and `vercel.json`'s daily cron entry pointing at it, exist purely to keep the `SeatAllocation` table from accumulating stale expired rows forever. **This is best-effort housekeeping, not the enforcement mechanism.** Vercel's Hobby plan only runs a cron once per day, so if this were the only thing freeing expired holds, a seat held at 00:01 would stay locked until the next day's sweep — nowhere near ten minutes. Because expiry is lazy and read-time, that limitation is harmless: the seat map and hold path are correct within milliseconds of expiry regardless of when the cron last ran.
+`POST /api/cron/sweep`, guarded by a bearer token, plus `vercel.json`'s daily cron entry, exist purely to keep the table from accumulating stale rows forever — best-effort housekeeping, not the enforcement mechanism. Vercel's Hobby plan only runs cron once a day, so if that were the only thing freeing expired holds, a seat held at 00:01 would stay locked until the next day's sweep. Lazy expiry makes that limitation harmless.
 
-One consequence worth being explicit about: `GET /api/shows/[id]/seats` does **not** delete expired rows as a side effect of a read. The real reason is load, not tidiness: this endpoint is polled every 3 seconds by every connected client, so an inline delete would turn every read into a write and multiply database load by the number of open tabs on that show. It computes status correctly (via the same lazy-expiry logic) without mutating anything. Physical row cleanup happens via the hold-creation transaction (which deletes expired rows for the specific seats it's about to claim) and the daily sweep — never as a side effect of viewing the seat map.
+`GET /api/shows/[id]/seats`, polled every 3 seconds by every connected client, deliberately performs no writes — an inline delete on every poll would multiply database load by the number of open tabs. It computes status correctly without mutating anything; physical cleanup happens in the hold-creation transaction and the daily sweep.
+
+Full reasoning, including the concurrency mechanism and the QR forgery model: [`DESIGN.md`](DESIGN.md).
+
+## Waitlist and time-limited offers
+
+Joining a sold-out category's waitlist is `POST /api/shows/[id]/waitlist`. When a booking on that show is cancelled, the freed seat is offered — inside the *same transaction* that releases it — to the oldest waiter, as a `HELD` allocation with its own TTL (`WAITLIST_OFFER_TTL_SECONDS`, default 900s). The seat is never visible as `AVAILABLE` at any point a poll could observe it. An unclaimed offer expires and cascades to the next waiter the next time anyone writes to or opens that show — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full state machine and sequence diagrams.
+
+## Database schema
+
+Full ERD with every unique constraint called out: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#entity-relationship-diagram). The short version: `User`, `Venue` → `SeatCategory` → `Seat`, `Event` → `Show` → `ShowPrice`, `SeatAllocation` (the hold/booked ledger), `Booking` → `BookingSeat` (price snapshots), `WaitlistEntry` → `WaitlistOffer`.
+
+## Further documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — design decisions traced to constraints, state machines, sequence diagrams, the ERD, a request-lifecycle walkthrough
+- [`docs/API.md`](docs/API.md) — every route: method, required role, request body, success response, every error code and what produces it
+- [`DESIGN.md`](DESIGN.md) — seat hold TTL, concurrency, QR forgery resistance, waitlist offers (800-word cap; a draft, not yet finalised)
+- [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) — every SRS requirement mapped to its route, file, and test
 
 ## Known limitations
 
-- **Ambiguous hold outcomes under heavy concurrency.** A hold request can fail in a way that doesn't tell the customer whether they got the seat (a dropped connection, a serverless cold start, a Neon pool timeout) — the request never resolves cleanly to a `2xx` or a `409`. `GET /api/holds/me` is the reconciliation path: it always reflects the true server-side state of what a customer currently holds, so a client that isn't sure what happened should call it rather than guess. This is treated as a handled case, not an edge case that got missed.
-- **Neon free-tier cold start.** The database can take a few seconds to wake up after a period of inactivity, which shows up as slow first requests rather than errors.
-- **Seeded email addresses aren't real by default.** `alice@ticketing.test` and friends aren't a deliverable domain — Nodemailer's `250 OK` from Gmail means Gmail accepted the message, not that it reached anyone. Set `DEMO_RECIPIENT_EMAIL` and the seed script gives alice, bob and carol `you+alice@…`, `you+bob@…`, `you+carol@…` (Gmail's `+tag` addressing) instead, so every seeded account's mail — booking confirmations and waitlist offers alike — lands in one real inbox you can actually check, while each login email stays unique. Leave it unset and the seed falls back to the non-deliverable `@ticketing.test` addresses.
-
-## Organiser signup
-
-`POST /api/auth/register` accepts `role: "CUSTOMER" | "ORGANISER"`. `ADMIN` is not reachable through any public endpoint — it only exists via the seed script. Registering as `ORGANISER` additionally requires an `inviteCode` matching the `ORGANISER_SIGNUP_CODE` environment variable; a missing or wrong code returns `403` with a message that doesn't reveal whether a code exists at all. This is how the assignment's requirement that organisers can self-register is satisfied without leaving open self-service escalation to a role that can create events.
-
-## Visual direction
-
-One typeface throughout: **Space Grotesk** — its geometric proportions and ticket-stub-style numerals suit a booking product better than the default Inter/system-ui sans everyone reaches for. Palette is warm off-white chrome over a near-black seat map, with a gold/amber accent (not `blue-500`) for primary actions and selection. The five seat states are built to survive greyscale on purpose: each combines a distinct hue with its own border weight/style (thin solid, medium solid, thick solid, thick solid, dashed) and its own glyph (blank, `•`, `×`, `✓`, `⏱`), so no two states rely on color alone to be told apart.
+- **Ambiguous hold outcomes under heavy concurrency.** A hold request can fail in a way that doesn't tell the customer whether they got the seat (a dropped connection, a serverless cold start, a Neon pool timeout) — the request never resolves cleanly to a `2xx` or a `409`. `GET /api/holds/me` is the reconciliation path: it always reflects true server-side state, so a client that isn't sure what happened should call it rather than guess.
+- **Neon free-tier cold start.** The database autosuspends when idle; the first request after a quiet period can take a few seconds. This shows up as a slow first request, not an error.
+- **Hobby-plan cron frequency.** `POST /api/cron/sweep` runs at most once a day on Vercel's Hobby plan — see [Seat holds, TTL, and the sweep](#seat-holds-ttl-and-the-sweep) for why that's survivable rather than a real limitation on the TTL guarantee itself.
+- **Seeded email addresses aren't real by default.** `alice@ticketing.test` and friends aren't a deliverable domain. Set `DEMO_RECIPIENT_EMAIL` and the seed script gives alice, bob and carol `+tag` addresses instead, so every seeded account's mail lands in one real inbox while each login email stays unique.
+- **`/demo` (a live concurrency-race visualisation) isn't built yet.** It's scoped and tracked in [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) as the one remaining Partial; `scripts/concurrency-test.ts` exercises the same code path today, just not as a browser-visible page.
+- **Six high-severity `npm audit` findings, all transitive and build-time only** (`postcss`, `sharp`, and `prisma`'s CLI, all pulled in by the Next.js toolchain, not the running application). Fixing requires a breaking major-version bump of Next.js; none are reachable through this app's actual runtime attack surface (no user-controlled CSS or image processing pipeline).

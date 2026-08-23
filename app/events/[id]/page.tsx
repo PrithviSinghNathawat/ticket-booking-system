@@ -1,7 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { activeAllocationWhere } from "@/lib/allocations";
+import { LinkButton } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default async function EventDetailPage({
   params,
@@ -35,6 +37,10 @@ export default async function EventDetailPage({
         <p className="mt-2 max-w-2xl text-sm text-[var(--page-fg)]/70">{event.description}</p>
       </div>
 
+      {event.shows.length === 0 && (
+        <EmptyState title="No showtimes scheduled yet" body="Check back soon, or browse other events." />
+      )}
+
       <ul className="flex flex-col gap-3">
         {event.shows.map((show) => {
           const totalSeats = show.venue.seats.length;
@@ -42,35 +48,30 @@ export default async function EventDetailPage({
           const soldOut = totalSeats > 0 && activeCount >= totalSeats;
 
           return (
-            <li
-              key={show.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] p-4"
-            >
-              <div>
-                <p className="font-semibold">
-                  {new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short" }).format(
-                    show.startsAt
-                  )}
-                </p>
-                <p className="text-sm text-[var(--page-fg)]/70">{show.venue.name}</p>
-                <p className="text-sm text-[var(--page-fg)]/70">
-                  {show.prices
-                    .map((p) => `${p.category.name}: ${p.price}`)
-                    .join(" · ")}
-                </p>
-              </div>
-              {soldOut ? (
-                <span className="rounded bg-[var(--booked)] px-3 py-1 text-xs font-semibold text-white">
-                  SOLD OUT
-                </span>
-              ) : (
-                <Link
-                  href={`/shows/${show.id}`}
-                  className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)]"
-                >
-                  View seat map
-                </Link>
-              )}
+            <li key={show.id}>
+              <Card className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold">
+                    {new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short" }).format(
+                      show.startsAt
+                    )}
+                  </p>
+                  <p className="text-sm text-[var(--page-fg)]/70">{show.venue.name}</p>
+                  <p className="text-sm text-[var(--page-fg)]/70">
+                    {show.prices
+                      .map((p) => `${p.category.name}: ${p.price}`)
+                      .join(" · ")}
+                  </p>
+                </div>
+                {soldOut ? (
+                  <LinkButton href={`/shows/${show.id}`} variant="secondary" className="gap-2">
+                    <span className="rounded bg-[var(--booked)] px-2 py-0.5 text-xs text-white">SOLD OUT</span>
+                    Join waitlist
+                  </LinkButton>
+                ) : (
+                  <LinkButton href={`/shows/${show.id}`}>View seat map</LinkButton>
+                )}
+              </Card>
             </li>
           );
         })}

@@ -9,6 +9,9 @@ import { SeatLegend } from "@/components/SeatLegend";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { MAX_HOLD_SEATS_PER_REQUEST } from "@/lib/config";
 import type { SeatMapSeat } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
+import { Notice } from "@/components/ui/Notice";
+import { SeatMapSkeleton } from "@/components/ui/Skeleton";
 
 type MyWaitlistEntry = {
   showId: string;
@@ -178,7 +181,11 @@ export function ShowSeatMapClient({
   }
 
   if (!data) {
-    return <main className="flex-1 p-8">Loading seat map...</main>;
+    return (
+      <main className="flex flex-1 flex-col gap-6 p-6">
+        <SeatMapSkeleton />
+      </main>
+    );
   }
 
   const priceByCategoryId = new Map(data.prices.map((p) => [p.categoryId, p]));
@@ -215,7 +222,9 @@ export function ShowSeatMapClient({
           </p>
         </div>
         {reconnecting && (
-          <span className="rounded bg-amber-100 px-2 py-1 text-xs text-amber-800">Reconnecting…</span>
+          <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+            Reconnecting…
+          </span>
         )}
       </div>
 
@@ -246,26 +255,28 @@ export function ShowSeatMapClient({
                 >
                   <span className="font-semibold">{p.categoryName} is sold out</span>
                   {!entry && (
-                    <button
+                    <Button
+                      variant="primary"
                       onClick={() => handleJoinWaitlist(p.categoryId)}
                       disabled={waitlistBusy === p.categoryId}
-                      className="rounded bg-[var(--accent)] px-3 py-1 font-semibold text-[var(--accent-fg)] disabled:opacity-50"
+                      className="px-3 py-1"
                     >
                       Join waitlist
-                    </button>
+                    </Button>
                   )}
                   {entry?.status === "WAITING" && (
                     <>
                       <span className="rounded bg-[var(--held)] px-2 py-0.5 text-xs font-semibold text-white">
                         Position {entry.position}
                       </span>
-                      <button
+                      <Button
+                        variant="secondary"
                         onClick={() => handleLeaveWaitlist(p.categoryId)}
                         disabled={waitlistBusy === p.categoryId}
-                        className="rounded border border-[var(--border-subtle)] px-3 py-1 disabled:opacity-50"
+                        className="px-3 py-1"
                       >
                         Leave waitlist
-                      </button>
+                      </Button>
                     </>
                   )}
                   {entry?.status === "OFFERED" && entry.offer && (
@@ -281,7 +292,7 @@ export function ShowSeatMapClient({
                       />
                       <Link
                         href={`/waitlist/claim/${entry.offer.token}`}
-                        className="rounded bg-[var(--accent)] px-3 py-1 font-semibold text-[var(--accent-fg)]"
+                        className="inline-flex items-center rounded-lg bg-[var(--accent)] px-3 py-1 text-sm font-semibold text-[var(--accent-fg)] shadow-[0_1px_0_rgba(0,0,0,0.15)] transition-transform active:translate-y-px"
                       >
                         Claim seat
                       </Link>
@@ -293,16 +304,8 @@ export function ShowSeatMapClient({
         </div>
       )}
 
-      {lostNotice && (
-        <p role="status" className="rounded bg-red-50 px-3 py-2 text-sm text-red-800">
-          {lostNotice}
-        </p>
-      )}
-      {capNotice && (
-        <p role="status" className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {capNotice}
-        </p>
-      )}
+      {lostNotice && <Notice tone="error">{lostNotice}</Notice>}
+      {capNotice && <Notice tone="warning">{capNotice}</Notice>}
 
       {activeHold ? (
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-[var(--mine)] bg-[var(--mine)]/10 p-4">
@@ -316,19 +319,12 @@ export function ShowSeatMapClient({
               <CountdownTimer expiresAt={activeHold.expiresAt} serverNow={data.serverNow} onExpire={refetchNow} />
             </p>
           </div>
-          <button
-            onClick={handleRelease}
-            disabled={busy}
-            className="rounded border border-[var(--border-subtle)] px-4 py-2 text-sm disabled:opacity-50"
-          >
+          <Button variant="secondary" onClick={handleRelease} disabled={busy}>
             Release my seats
-          </button>
-          <button
-            onClick={() => router.push(`/checkout/${showId}`)}
-            className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)]"
-          >
+          </Button>
+          <Button variant="primary" onClick={() => router.push(`/checkout/${showId}`)}>
             Continue to checkout
-          </button>
+          </Button>
         </div>
       ) : (
         selectedSeatIds.size > 0 && (
@@ -341,14 +337,10 @@ export function ShowSeatMapClient({
               ))}
               <p className="font-semibold">Total: {runningTotal}</p>
             </div>
-            {holdError && <p className="text-sm text-red-600">{holdError}</p>}
-            <button
-              onClick={handleHold}
-              disabled={busy || !canHold}
-              className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] disabled:opacity-50"
-            >
+            {holdError && <Notice tone="error">{holdError}</Notice>}
+            <Button variant="primary" onClick={handleHold} disabled={busy || !canHold}>
               Hold {selectedSeatIds.size} seat{selectedSeatIds.size > 1 ? "s" : ""}
-            </button>
+            </Button>
           </div>
         )
       )}

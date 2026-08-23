@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { SeatMap } from "@/components/SeatMap";
 import type { SeatMapSeat } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 type Venue = {
   id: string;
@@ -101,16 +107,16 @@ export function AdminVenuesClient() {
     <main className="flex flex-1 flex-col gap-6 p-6">
       <h1 className="text-2xl font-bold">Venues</h1>
 
-      <div className="rounded-xl border border-[var(--border-subtle)] p-4">
+      <Card>
         <h2 className="mb-2 font-semibold">Existing venues</h2>
         {!venues ? (
-          <p>Loading...</p>
+          <ListSkeleton rows={2} />
         ) : venues.length === 0 ? (
-          <p className="text-[var(--page-fg)]/70">No venues yet.</p>
+          <EmptyState title="No venues yet" body="Create one below to start scheduling shows." />
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {venues.map((v) => (
-              <li key={v.id} className="rounded border border-[var(--border-subtle)] p-2">
+              <li key={v.id} className="rounded-lg border border-[var(--border-subtle)] p-2">
                 <p className="font-semibold">{v.name}</p>
                 <p className="text-[var(--page-fg)]/70">{v.address}</p>
                 <p className="text-xs text-[var(--page-fg)]/60">
@@ -120,89 +126,79 @@ export function AdminVenuesClient() {
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
-      <form onSubmit={handleCreate} className="flex flex-col gap-4 rounded-xl border border-[var(--border-subtle)] p-4">
-        <h2 className="font-semibold">Create a venue</h2>
+      <form onSubmit={handleCreate}>
+        <Card className="flex flex-col gap-4">
+          <h2 className="font-semibold">Create a venue</h2>
 
-        <input
-          type="text"
-          placeholder="Venue name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        />
-        <input
-          type="text"
-          placeholder="Address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          required
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        />
+          <Input label="Venue name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input label="Address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} required />
 
-        <div>
-          <label className="mb-1 block text-sm font-semibold">Categories (comma separated)</label>
-          <input
+          <Input
+            label="Categories (comma separated)"
             type="text"
             value={categoryNames.join(", ")}
             onChange={(e) => setCategoryNames(e.target.value.split(",").map((s) => s.trim()))}
-            className="w-full rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
           />
-        </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-semibold">Rows</label>
-          <div className="flex flex-col gap-2">
-            {rows.map((row, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Row label (e.g. A)"
-                  value={row.label}
-                  onChange={(e) => updateRow(i, { label: e.target.value })}
-                  className="w-28 rounded border border-[var(--border-subtle)] px-2 py-1 text-sm"
-                />
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={row.seatCount}
-                  onChange={(e) => updateRow(i, { seatCount: Number(e.target.value) })}
-                  className="w-24 rounded border border-[var(--border-subtle)] px-2 py-1 text-sm"
-                />
-                <select
-                  value={row.categoryName}
-                  onChange={(e) => updateRow(i, { categoryName: e.target.value })}
-                  className="rounded border border-[var(--border-subtle)] px-2 py-1 text-sm"
-                >
-                  {categoryNames.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => removeRow(i)} className="text-sm text-red-600">
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button type="button" onClick={addRow} className="w-fit rounded border border-[var(--border-subtle)] px-3 py-1 text-sm">
-              + Add row
-            </button>
+          <div>
+            <p className="mb-2 text-sm font-medium">Rows</p>
+            <div className="flex flex-col gap-2">
+              {rows.map((row, i) => (
+                <div key={i} className="flex flex-wrap items-end gap-2">
+                  <label className="flex flex-col gap-1 text-xs">
+                    <span className="font-medium">Row label</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. A"
+                      value={row.label}
+                      onChange={(e) => updateRow(i, { label: e.target.value })}
+                      className="w-28 rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    <span className="font-medium">Seats</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={row.seatCount}
+                      onChange={(e) => updateRow(i, { seatCount: Number(e.target.value) })}
+                      className="w-24 rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    <span className="font-medium">Category</span>
+                    <select
+                      value={row.categoryName}
+                      onChange={(e) => updateRow(i, { categoryName: e.target.value })}
+                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+                    >
+                      {categoryNames.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button type="button" variant="danger" onClick={() => removeRow(i)} className="px-3 py-1.5">
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="secondary" onClick={addRow} className="w-fit px-3 py-1.5">
+                Add row
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <Notice tone="error">{error}</Notice>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-fit rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] disabled:opacity-50"
-        >
-          {submitting ? "Creating..." : "Create venue"}
-        </button>
+          <Button type="submit" disabled={submitting} className="w-fit">
+            {submitting ? "Creating..." : "Create venue"}
+          </Button>
+        </Card>
       </form>
 
       <div>

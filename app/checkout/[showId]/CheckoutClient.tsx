@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSeatMapPolling } from "@/hooks/useSeatMapPolling";
 import { CountdownTimer } from "@/components/CountdownTimer";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export function CheckoutClient({
   showId,
@@ -32,22 +37,23 @@ export function CheckoutClient({
   );
 
   if (!data) {
-    return <main className="flex-1 p-8">Loading...</main>;
+    return (
+      <main className="flex flex-1 flex-col gap-6 p-6">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-40 w-full max-w-md" />
+        <Skeleton className="h-64 w-full max-w-sm" />
+      </main>
+    );
   }
 
   if (mySeats.length === 0) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-xl font-semibold">No active hold on this show</h1>
-        <p className="max-w-sm text-[var(--page-fg)]/70">
-          Your seat hold has expired or been released. Head back to the seat map to select seats again.
-        </p>
-        <Link
-          href={`/shows/${showId}`}
-          className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)]"
-        >
-          Back to seat map
-        </Link>
+      <main className="flex flex-1 items-center justify-center p-8">
+        <EmptyState
+          title="No active hold on this show"
+          body="Your seat hold has expired or been released. Head back to the seat map to select seats again."
+          action={<LinkButton href={`/shows/${showId}`}>Back to seat map</LinkButton>}
+        />
       </main>
     );
   }
@@ -107,7 +113,7 @@ export function CheckoutClient({
         )}
       </p>
 
-      <div className="rounded-xl border border-[var(--border-subtle)] p-4">
+      <Card className="max-w-md">
         <h2 className="mb-2 font-semibold">Your seats</h2>
         <ul className="mb-3 text-sm">
           {mySeats.map((s) => (
@@ -126,49 +132,40 @@ export function CheckoutClient({
         <p className="mt-2 text-sm">
           Time remaining: <CountdownTimer expiresAt={expiresAt} serverNow={data.serverNow} onExpire={refetchNow} />
         </p>
-        <button
-          onClick={handleRelease}
-          disabled={releasing}
-          className="mt-3 rounded border border-[var(--border-subtle)] px-3 py-1.5 text-sm disabled:opacity-50"
-        >
+        <Button variant="secondary" onClick={handleRelease} disabled={releasing} className="mt-3">
           Release my seats
-        </button>
-      </div>
+        </Button>
+      </Card>
 
-      <form onSubmit={handleConfirm} className="flex max-w-sm flex-col gap-3 rounded-xl border border-[var(--border-subtle)] p-4">
-        <h2 className="font-semibold">Contact details</h2>
-        <input
-          type="text"
-          placeholder="Name on ticket"
-          value={contactName}
-          onChange={(e) => setContactName(e.target.value)}
-          required
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        />
-        <input
-          type="email"
-          placeholder="Contact email"
-          value={contactEmail}
-          onChange={(e) => setContactEmail(e.target.value)}
-          required
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        />
-        <input
-          type="tel"
-          placeholder="Contact phone"
-          value={contactPhone}
-          onChange={(e) => setContactPhone(e.target.value)}
-          required
-          className="rounded border border-[var(--border-subtle)] px-3 py-2 text-sm"
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] disabled:opacity-50"
-        >
-          {submitting ? "Confirming..." : "Confirm booking"}
-        </button>
+      <form onSubmit={handleConfirm} className="max-w-sm">
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-semibold">Contact details</h2>
+          <Input
+            label="Name on ticket"
+            type="text"
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            required
+          />
+          <Input
+            label="Contact email"
+            type="email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            required
+          />
+          <Input
+            label="Contact phone"
+            type="tel"
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            required
+          />
+          {error && <Notice tone="error">{error}</Notice>}
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Confirming..." : "Confirm booking"}
+          </Button>
+        </Card>
       </form>
     </main>
   );

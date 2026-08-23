@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LinkButton } from "@/components/ui/Button";
 
 export default async function EventSummaryPage({
   params,
@@ -87,12 +89,19 @@ export default async function EventSummaryPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{event.title} — revenue</h1>
+        <h1 className="text-2xl font-bold">{event.title}: revenue</h1>
         <Link href="/organiser/events" className="text-sm underline">
           Back to events
         </Link>
       </div>
 
+      {shows.length === 0 ? (
+        <EmptyState
+          title="No shows scheduled for this event yet"
+          body="Add a showtime and its seat pricing to start seeing revenue here."
+          action={<LinkButton href="/organiser/events">Back to events</LinkButton>}
+        />
+      ) : (
       <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)]">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
@@ -126,13 +135,14 @@ export default async function EventSummaryPage({
                   {s.cancelledCount} / {s.cancelledValue}
                 </td>
                 <td className="p-2">
-                  {s.waitlist.map((w) => `${w.name}: ${w.waiting}`).join(", ") || "—"}
+                  {s.waitlist.map((w) => `${w.name}: ${w.waiting}`).join(", ") || "-"}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="rounded-xl border border-[var(--border-subtle)] p-4 text-sm">
         <p className="font-semibold">Event total confirmed revenue: {eventRevenue}</p>

@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LinkButton } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default async function BookingsPage() {
   const session = await getSession();
 
   if (!session || session.role !== "CUSTOMER") {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-xl font-semibold">Sign in as a customer to see your bookings</h1>
-        <Link href="/login" className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)]">
-          Log in
-        </Link>
+      <main className="flex flex-1 items-center justify-center p-8">
+        <EmptyState
+          title="Sign in as a customer to see your bookings"
+          action={<LinkButton href="/login">Log in</LinkButton>}
+        />
       </main>
     );
   }
@@ -27,7 +29,11 @@ export default async function BookingsPage() {
       <h1 className="text-2xl font-bold">Your bookings</h1>
 
       {bookings.length === 0 ? (
-        <p className="text-[var(--page-fg)]/70">You haven&apos;t booked anything yet.</p>
+        <EmptyState
+          title="You haven't booked anything yet"
+          body="Browse what's on and pick a seat. Bookings you confirm will show up here."
+          action={<LinkButton href="/events">Browse events</LinkButton>}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {bookings.map((b) => (

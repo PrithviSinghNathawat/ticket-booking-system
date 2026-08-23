@@ -14,11 +14,11 @@ export function Header({ session }: { session: Session | null }) {
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4">
+    <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--border-subtle)] px-4 py-3 sm:px-6 sm:py-4">
       <Link href="/" className="text-lg font-bold tracking-tight">
         Ticket Booking
       </Link>
-      <nav className="flex items-center gap-4 text-sm">
+      <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <Link href="/events" className="hover:underline">
           Browse
         </Link>
@@ -44,12 +44,12 @@ export function Header({ session }: { session: Session | null }) {
         )}
         {session ? (
           <>
-            <span className="text-[var(--page-fg)]/70">
+            <span className="max-w-[40vw] truncate text-[var(--page-fg)]/70 sm:max-w-none" title={session.email}>
               {session.email} <span className="font-semibold">({session.role})</span>
             </span>
             <button
               onClick={handleLogout}
-              className="rounded border border-[var(--border-subtle)] px-3 py-1 hover:bg-[var(--border-subtle)]"
+              className="rounded-lg border border-[var(--border-subtle)] px-3 py-1 transition-transform hover:bg-[var(--border-subtle)] active:translate-y-px"
             >
               Log out
             </button>
@@ -61,7 +61,7 @@ export function Header({ session }: { session: Session | null }) {
             </Link>
             <Link
               href="/register"
-              className="rounded bg-[var(--accent)] px-3 py-1 font-semibold text-[var(--accent-fg)]"
+              className="rounded-lg bg-[var(--accent)] px-3 py-1 font-semibold text-[var(--accent-fg)] shadow-[0_1px_0_rgba(0,0,0,0.15)] transition-transform active:translate-y-px"
             >
               Sign up
             </Link>
