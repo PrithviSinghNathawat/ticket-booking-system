@@ -56,3 +56,6 @@ next-env.d.ts
 
 # scripts/screenshots.ts intermediate file, cleaned up automatically
 docs/images/.confirmation-email-preview.html
+
+# packaging output, not source
+/ticket-booking-system.zip
