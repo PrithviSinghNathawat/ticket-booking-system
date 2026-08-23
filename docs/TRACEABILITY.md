@@ -113,13 +113,14 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 
 | Item | Status |
 |---|---|
-| `README.md` — setup, env table, API table, schema description, TTL/waitlist prose, credentials, test coverage, screenshots | Done — full pass, Phase 9; screenshots added Phase 10 |
+| `README.md` — setup, env table, API table, schema description, TTL/waitlist prose, credentials, test coverage, screenshots, evaluation-criteria table | Done — full pass, Phase 9; screenshots added Phase 10; evaluation-criteria table added in the final submission pass |
 | `.env.example` | Done — updated every phase a new var was introduced |
-| `DESIGN.md` | Done — Phase 10 rewrite (802 words, 2 over the original 800-word target; used verbatim as supplied). QR forgery and the region-mismatch/`P2028` material moved to `docs/ARCHITECTURE.md` |
+| `DESIGN.md` | Done — Phase 10 rewrite, trimmed from 802 to 798 words (under the 800-word cap) in the final submission pass. QR forgery and the region-mismatch/`P2028` material moved to `docs/ARCHITECTURE.md` |
 | `docs/ARCHITECTURE.md` — decisions, state machines, sequence diagrams, ERD, layer diagram, request-lifecycle walkthrough | Done — Phase 9; Phase 10 fixed two diagrams that failed to render on GitHub |
-| `docs/API.md` — every route, role, body, response, error codes | Done — Phase 9 |
+| `docs/API.md` — every route, role, body, response, error codes | Done — Phase 9; error responses standardized to `{ error, code, details? }` in the final submission pass |
 | `docs/TRACEABILITY.md` | Done — this file |
-| `docs/ENGINEERING-LOG.md` — bugs found by testing, symptom/root cause/fix | Done — Phase 10 |
-| Public GitHub repo, `main` branch, live Vercel URL | Done |
-| Zip via `git archive` | Done — Phase 10; verified it unzips into a working tree with no `node_modules`/`.env`/`.next`/`.vscode`/`.idea` |
-| Screenshots | Done — Phase 10, `scripts/screenshots.ts` (Playwright, temporary dependency) against the production URL; all 7 in `docs/images/` |
+| `docs/ENGINEERING-LOG.md` — bugs found by testing, symptom/root cause/fix | Done — Phase 10; a silent seat-race-loss notice bug added in the final submission pass |
+| `LICENSE` | Done — MIT, added in the final submission pass (repo was public with no license before this) |
+| Public GitHub repo, `main` branch, live Vercel URL | Done — About sidebar (description, website, topics) set in the final submission pass |
+| Zip via `git archive` | Done — regenerated from current `main` in the final submission pass; verified it unzips into a working tree with no `node_modules`/`.env`/`.next`/`.vscode`/`.idea` |
+| Screenshots | Done — Phase 10, `scripts/screenshots.ts` (Playwright, temporary dependency) against the production URL; all 8 in `docs/images/` (the shot-list doc previously undercounted this as seven, corrected in the final submission pass) |

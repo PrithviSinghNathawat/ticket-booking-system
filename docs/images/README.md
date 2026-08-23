@@ -1,6 +1,6 @@
 # Screenshots
 
-All seven captured by `scripts/screenshots.ts` (Playwright, driven against the production URL — see that file's header comment for how to re-run it; it needs a temporary local `npm i -D playwright && npx playwright install chromium`, removed again once done).
+All eight captured by `scripts/screenshots.ts` (Playwright, driven against the production URL — see that file's header comment for how to re-run it; it needs a temporary local `npm i -D playwright && npx playwright install chromium`, removed again once done).
 
 | File | Shot | Used in |
 |---|---|---|
