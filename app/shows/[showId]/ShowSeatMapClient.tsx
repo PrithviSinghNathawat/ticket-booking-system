@@ -41,6 +41,8 @@ export function ShowSeatMapClient({
   const [busy, setBusy] = useState(false);
 
   const prevSeatsRef = useRef<Map<string, SeatMapSeat> | null>(null);
+  const selectedSeatIdsRef = useRef(selectedSeatIds);
+  selectedSeatIdsRef.current = selectedSeatIds;
 
   const mySeats = useMemo(() => data?.seats.filter((s) => s.mine) ?? [], [data]);
   const activeHold =
@@ -70,19 +72,17 @@ export function ShowSeatMapClient({
 
     if (prevSeatsRef.current) {
       const lostNow: string[] = [];
-      setSelectedSeatIds((prevSelected) => {
-        const next = new Set(prevSelected);
-        for (const seatId of prevSelected) {
-          const seat = currentSeatsById.get(seatId);
-          if (!seat || (seat.status !== "AVAILABLE" && !seat.mine)) {
-            next.delete(seatId);
-            lostNow.push(seatId);
-          }
+      const next = new Set(selectedSeatIdsRef.current);
+      for (const seatId of selectedSeatIdsRef.current) {
+        const seat = currentSeatsById.get(seatId);
+        if (!seat || (seat.status !== "AVAILABLE" && !seat.mine)) {
+          next.delete(seatId);
+          lostNow.push(seatId);
         }
-        return next;
-      });
+      }
 
       if (lostNow.length > 0) {
+        setSelectedSeatIds(next);
         const labels = lostNow
           .map((id) => currentSeatsById.get(id))
           .filter((s): s is SeatMapSeat => !!s)
