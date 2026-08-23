@@ -86,6 +86,27 @@ export type BookingEmailPayload = {
   qrPayload: string;
 };
 
+function bookingConfirmationHtml(payload: BookingEmailPayload, qrSrc: string, when: string): string {
+  const seatRows = payload.seats
+    .map(
+      (s) =>
+        `<tr><td style="padding:2px 8px 2px 0">${s.rowLabel}${s.seatNumber}</td><td style="padding:2px 8px">${s.categoryName}</td><td style="padding:2px 0">${s.price}</td></tr>`
+    )
+    .join("");
+
+  return `
+<div style="font-family:sans-serif;max-width:420px;color:#1f1b16">
+  <h2 style="margin:0 0 4px">Booking confirmed</h2>
+  <p style="margin:0 0 12px;color:#555">Ref: ${payload.reference}</p>
+  <p style="margin:0 0 4px"><strong>${payload.eventTitle}</strong></p>
+  <p style="margin:0 0 4px">${payload.venueName}</p>
+  <p style="margin:0 0 12px">${when}</p>
+  <table style="border-collapse:collapse;font-size:14px">${seatRows}</table>
+  <p style="margin:12px 0 16px"><strong>Total: ${payload.totalAmount}</strong></p>
+  <img src="${qrSrc}" alt="Ticket QR code" width="180" height="180" />
+</div>`.trim();
+}
+
 async function buildBookingConfirmationJob(payload: BookingEmailPayload): Promise<MailJob> {
   const qrBuffer = await QRCode.toBuffer(payload.qrPayload, QR_RENDER_OPTIONS);
   const when = payload.startsAt.toUTCString();
@@ -93,12 +114,6 @@ async function buildBookingConfirmationJob(payload: BookingEmailPayload): Promis
   const seatText = payload.seats
     .map((s) => `${s.rowLabel}${s.seatNumber} (${s.categoryName}) - ${s.price}`)
     .join("\n");
-  const seatRows = payload.seats
-    .map(
-      (s) =>
-        `<tr><td style="padding:2px 8px 2px 0">${s.rowLabel}${s.seatNumber}</td><td style="padding:2px 8px">${s.categoryName}</td><td style="padding:2px 0">${s.price}</td></tr>`
-    )
-    .join("");
 
   const text = [
     `Booking confirmed - ${payload.reference}`,
@@ -113,17 +128,7 @@ async function buildBookingConfirmationJob(payload: BookingEmailPayload): Promis
     `Total: ${payload.totalAmount}`,
   ].join("\n");
 
-  const html = `
-<div style="font-family:sans-serif;max-width:420px;color:#1f1b16">
-  <h2 style="margin:0 0 4px">Booking confirmed</h2>
-  <p style="margin:0 0 12px;color:#555">Ref: ${payload.reference}</p>
-  <p style="margin:0 0 4px"><strong>${payload.eventTitle}</strong></p>
-  <p style="margin:0 0 4px">${payload.venueName}</p>
-  <p style="margin:0 0 12px">${when}</p>
-  <table style="border-collapse:collapse;font-size:14px">${seatRows}</table>
-  <p style="margin:12px 0 16px"><strong>Total: ${payload.totalAmount}</strong></p>
-  <img src="cid:ticket-qr" alt="Ticket QR code" width="180" height="180" />
-</div>`.trim();
+  const html = bookingConfirmationHtml(payload, "cid:ticket-qr", when);
 
   return {
     logRef: payload.reference,
@@ -133,6 +138,16 @@ async function buildBookingConfirmationJob(payload: BookingEmailPayload): Promis
     html,
     attachments: [{ filename: "ticket-qr.png", content: qrBuffer, cid: "ticket-qr" }],
   };
+}
+
+/**
+ * Renders the confirmation email as browser-viewable HTML (QR embedded as a data URI instead of
+ * the cid: reference real mail clients resolve). Screenshot-only; never used on the send path.
+ */
+export async function renderBookingConfirmationEmailPreview(payload: BookingEmailPayload): Promise<string> {
+  const qrBuffer = await QRCode.toBuffer(payload.qrPayload, QR_RENDER_OPTIONS);
+  const qrDataUrl = `data:image/png;base64,${qrBuffer.toString("base64")}`;
+  return bookingConfirmationHtml(payload, qrDataUrl, payload.startsAt.toUTCString());
 }
 
 export function sendBookingConfirmationEmail(payload: BookingEmailPayload) {

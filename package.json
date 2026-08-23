@@ -17,6 +17,7 @@
     "rbac-test": "tsx scripts/rbac-test.ts",
     "organiser-test": "tsx scripts/organiser-test.ts",
     "mail-check": "tsx scripts/mail-check.ts",
+    "screenshots": "tsx scripts/screenshots.ts",
     "test:all": "tsx scripts/test-all.ts"
   },
   "prisma": {
