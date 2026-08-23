@@ -116,7 +116,8 @@ sequenceDiagram
     DB-->>R: committed
     R-->>U: 201 {reference} (response sent now)
     R--)M: after(): generate QR (lib/qr.ts), send confirmation email
-    Note over R,M: email failure cannot roll back the booking;<br/>the response above already left the server
+    Note over R,M: email failure cannot roll back the booking
+    Note over R,M: the response above already left the server
 ```
 
 ### Cancellation → offer creation → email → claim → booking
@@ -133,8 +134,10 @@ sequenceDiagram
     R->>DB: begin transaction
     R->>DB: Booking -> CANCELLED
     R->>DB: SeatAllocation(s) BOOKED -> deleted
-    R->>DB: processWaitlist(): oldest WAITING -> OFFERED,<br/>new HELD allocation for the offered seat
-    Note over DB: seat is never visible as AVAILABLE:<br/>release and offer commit together
+    R->>DB: processWaitlist(): oldest WAITING -> OFFERED
+    R->>DB: new HELD allocation for the offered seat
+    Note over DB: seat is never visible as AVAILABLE
+    Note over DB: release and offer commit together
     DB-->>R: commit
     R-->>U1: 200
     R--)M: after(): offer email to the waiter
@@ -280,5 +283,5 @@ flowchart TB
     RH --> LIB
     LIB -->|Prisma| DB
     CRON --> LIB
-    RH -.->|after(), fire-and-forget| SMTP
+    RH -.->|fire-and-forget via after| SMTP
 ```
