@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { createShowSchema } from "@/lib/schemas";
+import { apiError } from "@/lib/errors";
 
 export async function POST(
   request: Request,
@@ -20,12 +21,12 @@ export async function POST(
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event || event.organiserId !== auth.session.userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const startsAtDate = new Date(startsAt);
   if (startsAtDate <= new Date()) {
-    return NextResponse.json({ error: "startsAt must be in the future" }, { status: 400 });
+    return apiError(400, "startsAt must be in the future", "STARTS_AT_IN_PAST");
   }
 
   const venue = await prisma.venue.findUnique({
@@ -33,7 +34,7 @@ export async function POST(
     include: { categories: true },
   });
   if (!venue) {
-    return NextResponse.json({ error: "Venue not found" }, { status: 404 });
+    return apiError(404, "Venue not found", "VENUE_NOT_FOUND");
   }
 
   const venueCategoryIds = new Set(venue.categories.map((c) => c.id));
@@ -41,18 +42,12 @@ export async function POST(
 
   for (const categoryId of venueCategoryIds) {
     if (!pricedCategoryIds.has(categoryId)) {
-      return NextResponse.json(
-        { error: "Every seat category at this venue must have a price" },
-        { status: 400 }
-      );
+      return apiError(400, "Every seat category at this venue must have a price", "PRICE_COVERAGE_MISMATCH");
     }
   }
   for (const categoryId of pricedCategoryIds) {
     if (!venueCategoryIds.has(categoryId)) {
-      return NextResponse.json(
-        { error: "One or more prices reference a category not at this venue" },
-        { status: 400 }
-      );
+      return apiError(400, "One or more prices reference a category not at this venue", "PRICE_COVERAGE_MISMATCH");
     }
   }
 

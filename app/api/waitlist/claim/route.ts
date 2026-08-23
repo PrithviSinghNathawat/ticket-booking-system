@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { claimWaitlistSchema } from "@/lib/schemas";
 import { processWaitlist } from "@/lib/waitlist";
+import { apiError } from "@/lib/errors";
 
 export async function POST(request: Request) {
   const auth = await requireRole(["CUSTOMER"]);
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   });
 
   if (!offer || offer.waitlistEntry.userId !== auth.session.userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const showId = offer.waitlistEntry.showId;
@@ -28,9 +29,10 @@ export async function POST(request: Request) {
 
   if (offer.status !== "PENDING" || offer.expiresAt <= now) {
     await processWaitlist(showId);
-    return NextResponse.json(
-      { error: "This offer has expired and your seat was released to the next person in line." },
-      { status: 410 }
+    return apiError(
+      410,
+      "This offer has expired and your seat was released to the next person in line.",
+      "OFFER_EXPIRED"
     );
   }
 

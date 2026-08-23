@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { updateVenueSchema } from "@/lib/schemas";
+import { apiError } from "@/lib/errors";
 
 export async function GET(
   request: Request,
@@ -15,7 +16,7 @@ export async function GET(
     include: { categories: { include: { seats: { select: { id: true } } } } },
   });
   if (!venue) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   return NextResponse.json({
@@ -40,7 +41,7 @@ export async function PATCH(
 
   const venue = await prisma.venue.findUnique({ where: { id } });
   if (!venue) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const { name, address, categories, rows } = parsed.data;
@@ -48,22 +49,24 @@ export async function PATCH(
 
   if (changingLayout) {
     if (!categories || !rows) {
-      return NextResponse.json(
-        { error: "categories and rows must both be provided to change the layout" },
-        { status: 400 }
+      return apiError(
+        400,
+        "categories and rows must both be provided to change the layout",
+        "LAYOUT_FIELDS_INCOMPLETE"
       );
     }
 
     const rowLabels = rows.map((r) => r.label);
     if (new Set(rowLabels).size !== rowLabels.length) {
-      return NextResponse.json({ error: "Row labels must be unique" }, { status: 400 });
+      return apiError(400, "Row labels must be unique", "DUPLICATE_ROW_LABEL");
     }
     const categoryNames = new Set(categories.map((c) => c.name));
     for (const row of rows) {
       if (!categoryNames.has(row.categoryName)) {
-        return NextResponse.json(
-          { error: `Row ${row.label} references unknown category "${row.categoryName}"` },
-          { status: 400 }
+        return apiError(
+          400,
+          `Row ${row.label} references unknown category "${row.categoryName}"`,
+          "UNKNOWN_CATEGORY"
         );
       }
     }
@@ -72,9 +75,10 @@ export async function PATCH(
       where: { status: "CONFIRMED", show: { venueId: id } },
     });
     if (confirmedBookingCount > 0) {
-      return NextResponse.json(
-        { error: "This venue has confirmed bookings; its seat layout cannot be changed" },
-        { status: 409 }
+      return apiError(
+        409,
+        "This venue has confirmed bookings; its seat layout cannot be changed",
+        "VENUE_HAS_BOOKINGS"
       );
     }
   }
@@ -127,15 +131,12 @@ export async function DELETE(
 
   const venue = await prisma.venue.findUnique({ where: { id } });
   if (!venue) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const showCount = await prisma.show.count({ where: { venueId: id } });
   if (showCount > 0) {
-    return NextResponse.json(
-      { error: "This venue has shows referencing it and cannot be deleted" },
-      { status: 409 }
-    );
+    return apiError(409, "This venue has shows referencing it and cannot be deleted", "VENUE_HAS_SHOWS");
   }
 
   await prisma.$transaction(async (tx) => {

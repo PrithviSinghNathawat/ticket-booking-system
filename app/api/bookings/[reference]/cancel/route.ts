@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { offerFreedSeatsBatch, type BatchOfferResult, type FreedSeat } from "@/lib/waitlist";
 import { sendWaitlistOfferEmails } from "@/lib/mail";
 import { WAITLIST_OFFER_TTL_SECONDS, APP_URL } from "@/lib/config";
+import { apiError } from "@/lib/errors";
 
 export const maxDuration = 15;
 
@@ -61,10 +62,10 @@ export async function POST(
 
   const booking = await prisma.booking.findUnique({ where: { reference } });
   if (!booking || booking.userId !== auth.session.userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
   if (booking.status === "CANCELLED") {
-    return NextResponse.json({ error: "This booking is already cancelled" }, { status: 409 });
+    return apiError(409, "This booking is already cancelled", "ALREADY_CANCELLED");
   }
 
   let offerHandoffs: BatchOfferResult;
@@ -81,7 +82,7 @@ export async function POST(
     }
   } catch (err) {
     if (err instanceof AlreadyCancelledError) {
-      return NextResponse.json({ error: "This booking is already cancelled" }, { status: 409 });
+      return apiError(409, "This booking is already cancelled", "ALREADY_CANCELLED");
     }
     throw err;
   }

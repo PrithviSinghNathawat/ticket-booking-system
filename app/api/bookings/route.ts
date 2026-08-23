@@ -9,6 +9,7 @@ import { isActive } from "@/lib/allocations";
 import { generateBookingReference } from "@/lib/reference";
 import { buildQrPayload } from "@/lib/qr";
 import { sendBookingConfirmationEmail } from "@/lib/mail";
+import { apiError } from "@/lib/errors";
 
 class HoldLapsedError extends Error {}
 
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     include: { event: true, venue: true, prices: { include: { category: true } } },
   });
   if (!show) {
-    return NextResponse.json({ error: "Show not found" }, { status: 404 });
+    return apiError(404, "Show not found", "SHOW_NOT_FOUND");
   }
 
   const priceByCategoryId = new Map(
@@ -72,11 +73,10 @@ export async function POST(request: Request) {
     const activeHeld = heldRows.filter((row) => isActive(row, now));
 
     if (activeHeld.length === 0) {
-      return NextResponse.json(
-        {
-          error: "Your hold expired and your seats were released. Please select seats again.",
-        },
-        { status: 409 }
+      return apiError(
+        409,
+        "Your hold expired and your seats were released. Please select seats again.",
+        "HOLD_LAPSED"
       );
     }
 
@@ -159,11 +159,10 @@ export async function POST(request: Request) {
       booking = { id: bookingId, reference };
     } catch (err) {
       if (err instanceof HoldLapsedError) {
-        return NextResponse.json(
-          {
-            error: "Your hold expired and your seats were released. Please select seats again.",
-          },
-          { status: 409 }
+        return apiError(
+          409,
+          "Your hold expired and your seats were released. Please select seats again.",
+          "HOLD_LAPSED"
         );
       }
 
@@ -182,7 +181,7 @@ export async function POST(request: Request) {
   }
 
   if (!booking) {
-    return NextResponse.json({ error: "Could not create booking, please try again" }, { status: 500 });
+    return apiError(500, "Could not create booking, please try again", "REFERENCE_COLLISION");
   }
 
   const qrPayload = buildQrPayload(booking.reference);

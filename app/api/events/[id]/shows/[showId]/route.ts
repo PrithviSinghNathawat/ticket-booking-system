@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { updateShowSchema } from "@/lib/schemas";
+import { apiError } from "@/lib/errors";
 
 async function findOwnedShow(eventId: string, showId: string, userId: string) {
   const event = await prisma.event.findUnique({ where: { id: eventId } });
@@ -28,13 +29,13 @@ export async function PATCH(
 
   const show = await findOwnedShow(id, showId, auth.session.userId);
   if (!show) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const { startsAt, prices } = parsed.data;
 
   if (startsAt !== undefined && new Date(startsAt) <= new Date()) {
-    return NextResponse.json({ error: "startsAt must be in the future" }, { status: 400 });
+    return apiError(400, "startsAt must be in the future", "STARTS_AT_IN_PAST");
   }
 
   if (prices !== undefined) {
@@ -47,18 +48,12 @@ export async function PATCH(
 
     for (const categoryId of venueCategoryIds) {
       if (!pricedCategoryIds.has(categoryId)) {
-        return NextResponse.json(
-          { error: "Every seat category at this venue must have a price" },
-          { status: 400 }
-        );
+        return apiError(400, "Every seat category at this venue must have a price", "PRICE_COVERAGE_MISMATCH");
       }
     }
     for (const categoryId of pricedCategoryIds) {
       if (!venueCategoryIds.has(categoryId)) {
-        return NextResponse.json(
-          { error: "One or more prices reference a category not at this venue" },
-          { status: 400 }
-        );
+        return apiError(400, "One or more prices reference a category not at this venue", "PRICE_COVERAGE_MISMATCH");
       }
     }
   }
@@ -95,15 +90,12 @@ export async function DELETE(
 
   const show = await findOwnedShow(id, showId, auth.session.userId);
   if (!show) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const bookingCount = await prisma.booking.count({ where: { showId, status: "CONFIRMED" } });
   if (bookingCount > 0) {
-    return NextResponse.json(
-      { error: "This show has confirmed bookings and cannot be deleted" },
-      { status: 409 }
-    );
+    return apiError(409, "This show has confirmed bookings and cannot be deleted", "SHOW_HAS_BOOKINGS");
   }
 
   await prisma.$transaction(async (tx) => {

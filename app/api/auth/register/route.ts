@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/schemas";
 import { parseBody } from "@/lib/validate";
 import { hashPassword, createSessionCookie } from "@/lib/auth";
+import { apiError } from "@/lib/errors";
 
 export async function POST(request: Request) {
   const parsed = await parseBody(registerSchema, request);
@@ -12,18 +13,12 @@ export async function POST(request: Request) {
 
   const expectedInviteCode = process.env.ORGANISER_SIGNUP_CODE;
   if (role === "ORGANISER" && (!expectedInviteCode || inviteCode !== expectedInviteCode)) {
-    return NextResponse.json(
-      { error: "Organiser registration requires a valid invite code" },
-      { status: 403 }
-    );
+    return apiError(403, "Organiser registration requires a valid invite code", "INVITE_CODE_REQUIRED");
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return NextResponse.json(
-      { error: "An account with this email already exists" },
-      { status: 409 }
-    );
+    return apiError(409, "An account with this email already exists", "EMAIL_IN_USE");
   }
 
   const passwordHash = await hashPassword(password);

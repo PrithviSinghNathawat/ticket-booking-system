@@ -1,8 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
+import { apiError } from "@/lib/errors";
 
 const COOKIE_NAME = "session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -72,7 +72,7 @@ export async function getSession(): Promise<Session | null> {
 
 type RoleCheckResult =
   | { ok: true; session: Session }
-  | { ok: false; response: NextResponse };
+  | { ok: false; response: ReturnType<typeof apiError> };
 
 export async function requireRole(
   allowedRoles: Role[]
@@ -82,14 +82,14 @@ export async function requireRole(
   if (!session) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      response: apiError(401, "Unauthorized", "UNAUTHORIZED"),
     };
   }
 
   if (!allowedRoles.includes(session.role)) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      response: apiError(403, "Forbidden", "FORBIDDEN"),
     };
   }
 

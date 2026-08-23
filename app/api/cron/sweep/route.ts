@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { expiredHoldWhere } from "@/lib/allocations";
 import { processWaitlistForAllActiveShows } from "@/lib/waitlist";
+import { apiError } from "@/lib/errors";
 
 async function sweep(request: Request) {
   const expectedSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
 
   if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError(401, "Unauthorized", "UNAUTHORIZED");
   }
 
   const start = Date.now();

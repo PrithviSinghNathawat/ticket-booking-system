@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ENABLE_DEMO_ROUTES, APP_URL, DEMO_RACE_SEAT_COUNT } from "@/lib/config";
 import { ensureDemoRaceFixtures, ensureDemoRacers, clearDemoRaceSeat } from "@/lib/demo";
+import { apiError } from "@/lib/errors";
 
 export async function POST() {
   if (!ENABLE_DEMO_ROUTES) {
-    return NextResponse.json({ error: "Demo routes are disabled" }, { status: 404 });
+    return apiError(404, "Demo routes are disabled", "DEMO_DISABLED");
   }
 
   const { showId, seatId } = await ensureDemoRaceFixtures();

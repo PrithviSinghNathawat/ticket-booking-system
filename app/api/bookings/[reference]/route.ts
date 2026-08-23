@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
+import { apiError } from "@/lib/errors";
 
 export async function GET(
   request: Request,
@@ -20,7 +21,7 @@ export async function GET(
   });
 
   if (!booking || booking.userId !== auth.session.userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   return NextResponse.json({

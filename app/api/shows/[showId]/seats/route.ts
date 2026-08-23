@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { activeAllocationWhere } from "@/lib/allocations";
+import { apiError } from "@/lib/errors";
 
 export async function GET(
   request: Request,
@@ -20,7 +21,7 @@ export async function GET(
   });
 
   if (!show) {
-    return NextResponse.json({ error: "Show not found" }, { status: 404 });
+    return apiError(404, "Show not found", "SHOW_NOT_FOUND");
   }
 
   const session = await getSession();

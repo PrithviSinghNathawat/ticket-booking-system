@@ -5,6 +5,7 @@ import { parseBody } from "@/lib/validate";
 import { joinWaitlistSchema } from "@/lib/schemas";
 import { activeAllocationWhere } from "@/lib/allocations";
 import { processWaitlist } from "@/lib/waitlist";
+import { apiError } from "@/lib/errors";
 
 async function isCategorySoldOut(showId: string, categoryId: string, now: Date): Promise<boolean> {
   const seats = await prisma.seat.findMany({ where: { categoryId }, select: { id: true } });
@@ -34,12 +35,12 @@ export async function POST(
 
   const show = await prisma.show.findUnique({ where: { id: showId } });
   if (!show) {
-    return NextResponse.json({ error: "Show not found" }, { status: 404 });
+    return apiError(404, "Show not found", "SHOW_NOT_FOUND");
   }
 
   const category = await prisma.seatCategory.findUnique({ where: { id: categoryId } });
   if (!category || category.venueId !== show.venueId) {
-    return NextResponse.json({ error: "Category not found for this show" }, { status: 404 });
+    return apiError(404, "Category not found for this show", "CATEGORY_NOT_FOUND");
   }
 
   const existing = await prisma.waitlistEntry.findUnique({
@@ -51,19 +52,13 @@ export async function POST(
   }
 
   if (existing && existing.status === "CONVERTED") {
-    return NextResponse.json(
-      { error: "You already received a seat from this waitlist" },
-      { status: 400 }
-    );
+    return apiError(400, "You already received a seat from this waitlist", "ALREADY_CONVERTED");
   }
 
   const now = new Date();
   const soldOut = await isCategorySoldOut(showId, categoryId, now);
   if (!soldOut) {
-    return NextResponse.json(
-      { error: "Seats are currently available in this category, no need to wait" },
-      { status: 400 }
-    );
+    return apiError(400, "Seats are currently available in this category, no need to wait", "NOT_SOLD_OUT");
   }
 
   if (existing) {
@@ -92,7 +87,7 @@ export async function DELETE(
   const { searchParams } = new URL(request.url);
   const categoryId = searchParams.get("categoryId");
   if (!categoryId) {
-    return NextResponse.json({ error: "categoryId query parameter is required" }, { status: 400 });
+    return apiError(400, "categoryId query parameter is required", "MISSING_QUERY_PARAM");
   }
 
   const userId = auth.session.userId;

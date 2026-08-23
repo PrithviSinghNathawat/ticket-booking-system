@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/schemas";
 import { parseBody } from "@/lib/validate";
 import { verifyPassword, createSessionCookie } from "@/lib/auth";
+import { apiError } from "@/lib/errors";
 
 export async function POST(request: Request) {
   const parsed = await parseBody(loginSchema, request);
@@ -12,10 +13,7 @@ export async function POST(request: Request) {
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    return NextResponse.json(
-      { error: "Invalid email or password" },
-      { status: 401 }
-    );
+    return apiError(401, "Invalid email or password", "INVALID_CREDENTIALS");
   }
 
   await createSessionCookie({

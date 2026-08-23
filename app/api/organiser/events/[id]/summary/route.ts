@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
+import { apiError } from "@/lib/errors";
 
 export async function GET(
   request: Request,
@@ -27,7 +28,7 @@ export async function GET(
   });
 
   if (!event || (auth.session.role === "ORGANISER" && event.organiserId !== auth.session.userId)) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const now = new Date();

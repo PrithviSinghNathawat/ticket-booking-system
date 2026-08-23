@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { updateEventSchema } from "@/lib/schemas";
+import { apiError } from "@/lib/errors";
 
 export async function PATCH(
   request: Request,
@@ -18,7 +19,7 @@ export async function PATCH(
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event || event.organiserId !== auth.session.userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const updated = await prisma.event.update({ where: { id }, data: parsed.data });
@@ -42,15 +43,12 @@ export async function DELETE(
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event || event.organiserId !== auth.session.userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError(404, "Not found", "NOT_FOUND");
   }
 
   const showCount = await prisma.show.count({ where: { eventId: id } });
   if (showCount > 0) {
-    return NextResponse.json(
-      { error: "This event has shows and cannot be deleted" },
-      { status: 409 }
-    );
+    return apiError(409, "This event has shows and cannot be deleted", "EVENT_HAS_SHOWS");
   }
 
   await prisma.event.delete({ where: { id } });

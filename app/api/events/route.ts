@@ -5,6 +5,7 @@ import { activeAllocationWhere } from "@/lib/allocations";
 import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { createEventSchema } from "@/lib/schemas";
+import { apiError } from "@/lib/errors";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   const venueId = searchParams.get("venueId");
 
   if (type && type !== "MOVIE" && type !== "CONCERT") {
-    return NextResponse.json({ error: "type must be MOVIE or CONCERT" }, { status: 400 });
+    return apiError(400, "type must be MOVIE or CONCERT", "VALIDATION_FAILED");
   }
 
   let dayStart: Date | undefined;
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
   if (date) {
     dayStart = new Date(`${date}T00:00:00.000Z`);
     if (Number.isNaN(dayStart.getTime())) {
-      return NextResponse.json({ error: "date must be an ISO date (YYYY-MM-DD)" }, { status: 400 });
+      return apiError(400, "date must be an ISO date (YYYY-MM-DD)", "VALIDATION_FAILED");
     }
     dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
   }

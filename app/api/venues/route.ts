@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { parseBody } from "@/lib/validate";
 import { createVenueSchema } from "@/lib/schemas";
+import { apiError } from "@/lib/errors";
 
 export async function GET() {
   const venues = await prisma.venue.findMany({
@@ -31,15 +32,16 @@ export async function POST(request: Request) {
 
   const rowLabels = rows.map((r) => r.label);
   if (new Set(rowLabels).size !== rowLabels.length) {
-    return NextResponse.json({ error: "Row labels must be unique" }, { status: 400 });
+    return apiError(400, "Row labels must be unique", "DUPLICATE_ROW_LABEL");
   }
 
   const categoryNames = new Set(categories.map((c) => c.name));
   for (const row of rows) {
     if (!categoryNames.has(row.categoryName)) {
-      return NextResponse.json(
-        { error: `Row ${row.label} references unknown category "${row.categoryName}"` },
-        { status: 400 }
+      return apiError(
+        400,
+        `Row ${row.label} references unknown category "${row.categoryName}"`,
+        "UNKNOWN_CATEGORY"
       );
     }
   }

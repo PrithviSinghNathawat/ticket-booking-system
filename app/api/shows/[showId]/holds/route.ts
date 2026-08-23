@@ -6,6 +6,7 @@ import { parseBody } from "@/lib/validate";
 import { holdRequestSchema } from "@/lib/schemas";
 import { HOLD_TTL_SECONDS } from "@/lib/config";
 import { activeAllocationWhere, expiredHoldWhere, isActive } from "@/lib/allocations";
+import { apiError } from "@/lib/errors";
 
 class ActiveHoldExistsError extends Error {}
 
@@ -34,12 +35,12 @@ export async function POST(
 
   const seatIds = parsed.data.seatIds;
   if (new Set(seatIds).size !== seatIds.length) {
-    return NextResponse.json({ error: "Duplicate seat ids in request" }, { status: 400 });
+    return apiError(400, "Duplicate seat ids in request", "DUPLICATE_SEAT_IDS");
   }
 
   const show = await prisma.show.findUnique({ where: { id: showId } });
   if (!show) {
-    return NextResponse.json({ error: "Show not found" }, { status: 404 });
+    return apiError(404, "Show not found", "SHOW_NOT_FOUND");
   }
 
   const validSeats = await prisma.seat.findMany({
@@ -47,10 +48,7 @@ export async function POST(
     select: { id: true },
   });
   if (validSeats.length !== seatIds.length) {
-    return NextResponse.json(
-      { error: "One or more seat ids are invalid for this show" },
-      { status: 400 }
-    );
+    return apiError(400, "One or more seat ids are invalid for this show", "INVALID_SEATS");
   }
 
   const now = new Date();
@@ -82,12 +80,10 @@ export async function POST(
     });
   } catch (err) {
     if (err instanceof ActiveHoldExistsError) {
-      return NextResponse.json(
-        {
-          error:
-            "You already have an active hold on this show. Release it before requesting more seats.",
-        },
-        { status: 409 }
+      return apiError(
+        409,
+        "You already have an active hold on this show. Release it before requesting more seats.",
+        "ACTIVE_HOLD_EXISTS"
       );
     }
 
@@ -96,12 +92,11 @@ export async function POST(
         where: { showId, seatId: { in: seatIds }, ...activeAllocationWhere(now) },
         select: { seatId: true },
       });
-      return NextResponse.json(
-        {
-          error: "Some requested seats were just taken by another customer",
-          conflictingSeatIds: conflicting.map((c) => c.seatId),
-        },
-        { status: 409 }
+      return apiError(
+        409,
+        "Some requested seats were just taken by another customer",
+        "SEAT_CONFLICT",
+        { conflictingSeatIds: conflicting.map((c) => c.seatId) }
       );
     }
 

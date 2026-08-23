@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
+import { apiError } from "@/lib/errors";
 
 type ParseResult<T> =
   | { ok: true; data: T }
-  | { ok: false; response: NextResponse };
+  | { ok: false; response: ReturnType<typeof apiError> };
 
 export async function parseBody<T>(
   schema: ZodType<T>,
@@ -15,10 +15,7 @@ export async function parseBody<T>(
   } catch {
     return {
       ok: false,
-      response: NextResponse.json(
-        { error: "Invalid JSON body" },
-        { status: 400 }
-      ),
+      response: apiError(400, "Invalid JSON body", "INVALID_JSON"),
     };
   }
 
@@ -26,9 +23,11 @@ export async function parseBody<T>(
   if (!result.success) {
     return {
       ok: false,
-      response: NextResponse.json(
-        { error: "Validation failed", fields: result.error.flatten().fieldErrors },
-        { status: 400 }
+      response: apiError(
+        400,
+        "Validation failed",
+        "VALIDATION_FAILED",
+        result.error.flatten().fieldErrors
       ),
     };
   }
