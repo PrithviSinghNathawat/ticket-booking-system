@@ -16,10 +16,11 @@ No setup required — the live URL above is a real deployment against a real (Ne
 | Organiser | `organiser@ticketing.test` | `OrganiserPass123!` |
 | Customer | `alice@ticketing.test` | `CustomerPass123!` |
 
-Two places worth going first:
+Three places worth going first:
 
 - **[Book a seat](https://unthinkable-two.vercel.app/events)** — browse, pick a show, hold seats, check out. The hold has a visible countdown; released seats reappear for other customers within 3 seconds.
 - **[A sold-out show](https://unthinkable-two.vercel.app/events/cmt4o4ezv004rltnkypacat2t)** — click through to the sold-out showtime and join its waitlist. Cancel a booking on that show (as any logged-in customer who holds one, or via the organiser view) to watch the offer cascade to the next person in line.
+- **[/demo](https://unthinkable-two.vercel.app/demo)** — fires ten simultaneous hold requests at one seat and shows the single winner, and separately triggers the waitlist cascade on cancellation, both against the real API and real database, no cloning required.
 
 The database can take a few seconds to wake up on the very first request after a quiet period — see [Known limitations](#known-limitations).
 
@@ -174,5 +175,4 @@ Full ERD with every unique constraint called out: [`docs/ARCHITECTURE.md`](docs/
 - **Neon free-tier cold start.** The database autosuspends when idle; the first request after a quiet period can take a few seconds. This shows up as a slow first request, not an error.
 - **Hobby-plan cron frequency.** `POST /api/cron/sweep` runs at most once a day on Vercel's Hobby plan — see [Seat holds, TTL, and the sweep](#seat-holds-ttl-and-the-sweep) for why that's survivable rather than a real limitation on the TTL guarantee itself.
 - **Seeded email addresses aren't real by default.** `alice@ticketing.test` and friends aren't a deliverable domain. Set `DEMO_RECIPIENT_EMAIL` and the seed script gives alice, bob and carol `+tag` addresses instead, so every seeded account's mail lands in one real inbox while each login email stays unique.
-- **`/demo` (a live concurrency-race visualisation) isn't built yet.** It's scoped and tracked in [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) as the one remaining Partial; `scripts/concurrency-test.ts` exercises the same code path today, just not as a browser-visible page.
 - **Six high-severity `npm audit` findings, all transitive and build-time only** (`postcss`, `sharp`, and `prisma`'s CLI, all pulled in by the Next.js toolchain, not the running application). Fixing requires a breaking major-version bump of Next.js; none are reachable through this app's actual runtime attack surface (no user-controlled CSS or image processing pipeline).

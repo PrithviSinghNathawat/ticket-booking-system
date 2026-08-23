@@ -21,6 +21,52 @@ function displayStatus(seat: SeatMapSeat, selected: boolean): keyof typeof STATU
   return seat.status;
 }
 
+/** Splits a row into (narrow side, wide centre, narrow side) blocks, like a real auditorium aisle layout. */
+function splitRow<T>(rowSeats: T[]): [T[], T[], T[]] {
+  const n = rowSeats.length;
+  const sideSize = n >= 8 ? 2 : n >= 5 ? 1 : 0;
+  return [rowSeats.slice(0, sideSize), rowSeats.slice(sideSize, n - sideSize), rowSeats.slice(n - sideSize)];
+}
+
+function SeatButton({
+  seat,
+  rowLabel,
+  status,
+  clickable,
+  justLost,
+  selectionDisabledReason,
+  onToggleSeat,
+}: {
+  seat: SeatMapSeat;
+  rowLabel: string;
+  status: keyof typeof STATUS_LABEL;
+  clickable: boolean;
+  justLost: boolean;
+  selectionDisabledReason?: string;
+  onToggleSeat: (seat: SeatMapSeat) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="seat-btn"
+      data-status={status}
+      data-just-lost={justLost ? "true" : undefined}
+      disabled={!clickable}
+      title={
+        clickable
+          ? `Row ${rowLabel}, seat ${seat.seatNumber} · ${seat.categoryName} · ${seat.price}`
+          : seat.status === "AVAILABLE" && selectionDisabledReason
+            ? `Row ${rowLabel}, seat ${seat.seatNumber}: ${selectionDisabledReason}`
+            : `Row ${rowLabel}, seat ${seat.seatNumber}: ${STATUS_LABEL[status]}`
+      }
+      aria-label={`Row ${rowLabel}, seat ${seat.seatNumber}, ${seat.categoryName}, ${STATUS_LABEL[status]}`}
+      onClick={() => onToggleSeat(seat)}
+    >
+      {STATUS_GLYPH[status] || seat.seatNumber}
+    </button>
+  );
+}
+
 export function SeatMap({
   seats,
   selectedSeatIds,
@@ -40,21 +86,46 @@ export function SeatMap({
     list.push(seat);
     rows.set(seat.rowLabel, list);
   }
+  const rowEntries = Array.from(rows.entries());
+  const centreIndex = (rowEntries.length - 1) / 2;
 
   return (
     <div className="overflow-x-auto rounded-xl bg-[var(--panel-dark)] p-6">
-      <div className="mb-6 min-w-max text-center">
-        <div className="mx-auto h-2 w-2/3 rounded-full bg-[var(--panel-dark-fg)]/20" />
-        <p className="mt-1 text-xs tracking-widest text-[var(--panel-dark-fg)]/50">SCREEN / STAGE</p>
-      </div>
+      <div className="mx-auto flex w-fit flex-col items-center gap-2">
+        <div className="mb-4 w-full text-center">
+          <div className="mx-auto h-2 w-full rounded-full bg-[var(--panel-dark-fg)]/20" />
+          <p className="mt-1 text-xs tracking-widest text-[var(--panel-dark-fg)]/50">SCREEN / STAGE</p>
+        </div>
 
-      <div className="flex min-w-max flex-col gap-2">
-        {Array.from(rows.entries()).map(([rowLabel, rowSeats]) => {
-          const midpoint = Math.ceil(rowSeats.length / 2);
+        {rowEntries.map(([rowLabel, rowSeats], rowIndex) => {
           const categoryName = rowSeats[0]?.categoryName ?? "";
+          const [left, centre, right] = splitRow(rowSeats);
+          const arcOffset = Math.round(Math.abs(rowIndex - centreIndex) * 1.5);
+
+          const renderSeat = (seat: SeatMapSeat) => {
+            const selected = selectedSeatIds.has(seat.seatId);
+            const status = displayStatus(seat, selected);
+            const clickable = seat.status === "AVAILABLE" && !selectionDisabledReason;
+            return (
+              <SeatButton
+                key={seat.seatId}
+                seat={seat}
+                rowLabel={rowLabel}
+                status={status}
+                clickable={clickable}
+                justLost={justLostSeatIds.has(seat.seatId)}
+                selectionDisabledReason={selectionDisabledReason}
+                onToggleSeat={onToggleSeat}
+              />
+            );
+          };
 
           return (
-            <div key={rowLabel} className="flex items-center gap-3">
+            <div
+              key={rowLabel}
+              className="flex items-center gap-3"
+              style={{ transform: `translateY(${arcOffset}px)` }}
+            >
               <span
                 className="w-20 shrink-0 rounded px-2 py-1 text-center text-xs font-semibold"
                 style={{
@@ -64,37 +135,29 @@ export function SeatMap({
               >
                 {rowLabel} · {categoryName}
               </span>
-              <div className="flex gap-1.5">
-                {rowSeats.map((seat, index) => {
-                  const selected = selectedSeatIds.has(seat.seatId);
-                  const status = displayStatus(seat, selected);
-                  const clickable = seat.status === "AVAILABLE" && !selectionDisabledReason;
 
-                  return (
-                    <div key={seat.seatId} className="flex items-center">
-                      {index === midpoint && <div className="w-4" aria-hidden />}
-                      <button
-                        type="button"
-                        className="seat-btn"
-                        data-status={status}
-                        data-just-lost={justLostSeatIds.has(seat.seatId) ? "true" : undefined}
-                        disabled={!clickable}
-                        title={
-                          clickable
-                            ? `Row ${rowLabel}, seat ${seat.seatNumber} · ${seat.categoryName} · ${seat.price}`
-                            : seat.status === "AVAILABLE" && selectionDisabledReason
-                              ? `Row ${rowLabel}, seat ${seat.seatNumber}: ${selectionDisabledReason}`
-                              : `Row ${rowLabel}, seat ${seat.seatNumber}: ${STATUS_LABEL[status]}`
-                        }
-                        aria-label={`Row ${rowLabel}, seat ${seat.seatNumber}, ${seat.categoryName}, ${STATUS_LABEL[status]}`}
-                        onClick={() => onToggleSeat(seat)}
-                      >
-                        {STATUS_GLYPH[status] || seat.seatNumber}
-                      </button>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center gap-3">
+                {left.length > 0 && (
+                  <>
+                    <div className="flex gap-1.5">{left.map(renderSeat)}</div>
+                    <div className="w-3" aria-hidden />
+                  </>
+                )}
+                <div className="flex gap-1.5">{centre.map(renderSeat)}</div>
+                {right.length > 0 && (
+                  <>
+                    <div className="w-3" aria-hidden />
+                    <div className="flex gap-1.5">{right.map(renderSeat)}</div>
+                  </>
+                )}
               </div>
+
+              <span
+                className="w-8 shrink-0 rounded px-1 py-1 text-center text-xs font-semibold text-[var(--panel-dark-fg)]/60"
+                aria-hidden
+              >
+                {rowLabel}
+              </span>
             </div>
           );
         })}

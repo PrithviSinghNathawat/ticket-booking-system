@@ -27,12 +27,16 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export async function createSessionCookie(session: Session) {
-  const token = await new SignJWT({ ...session })
+export async function signSessionToken(session: Session): Promise<string> {
+  return new SignJWT({ ...session })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
     .sign(getSecret());
+}
+
+export async function createSessionCookie(session: Session) {
+  const token = await signSessionToken(session);
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {

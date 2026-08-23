@@ -1,6 +1,6 @@
 # Traceability matrix
 
-One row per requirement bullet from the assignment's Scope of Work and Technical Expectations. Built at Phase 7 and kept current through Phase 9. Three rows (Admin venue management, Organiser event/show creation, Organiser revenue summary) were `Not started` through Phases 1-6; Phase 7 closes them. `/demo` is the one row that remains genuinely `Partial`.
+One row per requirement bullet from the assignment's Scope of Work and Technical Expectations. Built at Phase 7 and kept current through Phase 10. Three rows (Admin venue management, Organiser event/show creation, Organiser revenue summary) were `Not started` through Phases 1-6; Phase 7 closes them. `/demo` was `Partial` through Phase 9; Phase 10 closes it. No `Partial` or `Not started` rows remain.
 
 Status legend: **Done** — implemented and covered by an automated test. **Partial** — implemented but with a known, documented gap. **Not started** — no implementation.
 
@@ -74,7 +74,7 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 | Polling every 3s, paused on `document.hidden`, backoff on error | — | `hooks/useSeatMapPolling.ts` | manual | Done |
 | Restoring an existing hold on mount/refresh | `/shows/[showId]` | `app/shows/[showId]/*` | manual | Done |
 | Browse/filter events server-side | `GET /api/events` | `app/api/events/route.ts` | manual | Done |
-| `/demo` concurrency-visualization page | — | — | — | **Partial** — deferred at Phase 4 and still not built as of Phase 9; the concurrency guarantee it would visualise is fully covered by `scripts/concurrency-test.ts`, just not as a browser-visible page |
+| `/demo` concurrency-visualization page | `POST /api/demo/race`, `POST /api/demo/waitlist-cascade`, `POST /api/demo/reset` | `app/demo/*`, `app/api/demo/*`, `lib/demo.ts` | manual (Phase 10); the race demo exercises the exact code path `scripts/concurrency-test.ts` also covers, live in the browser | Done |
 
 ## Admin venue management *(new this phase)*
 
