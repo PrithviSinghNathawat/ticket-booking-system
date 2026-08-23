@@ -115,7 +115,7 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 |---|---|
 | `README.md` — setup, env table, API table, schema description, TTL/waitlist prose, credentials, test coverage, screenshots | Done — full pass, Phase 9; screenshots added Phase 10 |
 | `.env.example` | Done — updated every phase a new var was introduced |
-| `DESIGN.md`, ≤800 words | Pending — Phase 10 asked for a supplied rewrite that was referenced but not actually included in the phase prompt; still the Phase 9 version (799 words) until that text is provided |
+| `DESIGN.md` | Done — Phase 10 rewrite (802 words, 2 over the original 800-word target; used verbatim as supplied). QR forgery and the region-mismatch/`P2028` material moved to `docs/ARCHITECTURE.md` |
 | `docs/ARCHITECTURE.md` — decisions, state machines, sequence diagrams, ERD, layer diagram, request-lifecycle walkthrough | Done — Phase 9; Phase 10 fixed two diagrams that failed to render on GitHub |
 | `docs/API.md` — every route, role, body, response, error codes | Done — Phase 9 |
 | `docs/TRACEABILITY.md` | Done — this file |

@@ -169,7 +169,7 @@ Full ERD with every unique constraint called out: [`docs/ARCHITECTURE.md`](docs/
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — design decisions traced to constraints, state machines, sequence diagrams, the ERD, a request-lifecycle walkthrough
 - [`docs/API.md`](docs/API.md) — every route: method, required role, request body, success response, every error code and what produces it
-- [`DESIGN.md`](DESIGN.md) — seat hold TTL, concurrency, QR forgery resistance, waitlist offers (800-word cap; a draft, not yet finalised)
+- [`DESIGN.md`](DESIGN.md) — seat hold TTL, concurrency prevention, waitlist auto-assignment, time-limited offers (802 words; QR forgery resistance and the region-mismatch/`P2028` story live in `docs/ARCHITECTURE.md` instead)
 - [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) — every SRS requirement mapped to its route, file, and test
 - [`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md) — bugs found by testing rather than by writing: symptom, root cause, fix
 
