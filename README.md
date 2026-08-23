@@ -25,9 +25,19 @@ The database can take a few seconds to wake up on the very first request after a
 
 **Test coverage**: seven scripts, 167 assertions, run with a single `npm run test:all` — see [Testing](#testing).
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Checkout with live countdown](docs/images/checkout.png) Checkout, with the live hold countdown | ![Ticket with QR code](docs/images/ticket.png) A confirmed booking's ticket, QR included |
+| ![Organiser revenue summary](docs/images/organiser-revenue.png) Organiser revenue and occupancy | ![Admin venue layout builder](docs/images/admin-venue-builder.png) Admin venue layout builder |
+
+Shot list and file names: [`docs/images/README.md`](docs/images/README.md).
+
 ## Contents
 
 - [Try it now](#try-it-now)
+- [Screenshots](#screenshots)
 - [Stack](#stack)
 - [Local setup](#local-setup)
 - [Environment variables](#environment-variables)

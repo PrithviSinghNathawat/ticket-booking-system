@@ -70,7 +70,7 @@ Status legend: **Done** — implemented and covered by an automated test. **Part
 
 | SRS bullet | Route(s) | File(s) | Test(s) | Status |
 |---|---|---|---|---|
-| Seat map: 5 states, greyscale-safe, keyboard-reachable, 380px-usable | — | `components/SeatMap.tsx`, `components/SeatLegend.tsx`, `app/globals.css` | manual (Phase 4 report + Phase 5 glyph/border fixes) | Done |
+| Seat map: 5 states, greyscale-safe, keyboard-reachable, 380px-usable | — | `components/SeatMap.tsx`, `components/SeatLegend.tsx`, `app/globals.css` | manual (Phase 4 report + Phase 5 glyph/border fixes; Phase 9 fixed a real legend contrast bug and added hover price info) | Done |
 | Polling every 3s, paused on `document.hidden`, backoff on error | — | `hooks/useSeatMapPolling.ts` | manual | Done |
 | Restoring an existing hold on mount/refresh | `/shows/[showId]` | `app/shows/[showId]/*` | manual | Done |
 | Browse/filter events server-side | `GET /api/events` | `app/api/events/route.ts` | manual | Done |
