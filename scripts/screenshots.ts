@@ -1,5 +1,9 @@
+// Requires a local, temporary install: npm i -D playwright && npx playwright install chromium.
+// Deliberately excluded from tsconfig.json and not part of the committed dependency list -
+// playwright is uninstalled again once the PNGs in docs/images/ exist. Re-run this script only
+// after reinstalling it.
 import { chromium, type Browser, type BrowserContext } from "playwright";
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, unlinkSync } from "fs";
 import { buildQrPayload } from "@/lib/qr";
 import { renderBookingConfirmationEmailPreview } from "@/lib/mail";
 
@@ -57,7 +61,7 @@ async function main() {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: adminCookie },
     body: JSON.stringify({
-      name: `Screenshot Venue ${Date.now()}`,
+      name: "Riverside Cinema",
       address: "For docs/images capture only",
       categories: [{ name: "Premium" }],
       rows: [{ label: "A", seatCount: 10, categoryName: "Premium" }],
@@ -73,7 +77,7 @@ async function main() {
   const eventRes = await fetch(`${BASE_URL}/api/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: organiserCookie },
-    body: JSON.stringify({ title: "Screenshot Screening", type: "MOVIE", description: "For docs/images capture only." }),
+    body: JSON.stringify({ title: "The Late Show", type: "MOVIE", description: "For docs/images capture only." }),
   });
   const event = await eventRes.json();
   console.log("event created:", eventRes.status, event.id);
@@ -214,6 +218,7 @@ async function main() {
     await page.screenshot({ path: `${OUT_DIR}/confirmation-email.png` });
     console.log("saved confirmation-email.png");
     await context.close();
+    unlinkSync(tmpPath);
   }
 
   // ================= 5. /demo mid-race =================
@@ -221,8 +226,9 @@ async function main() {
     const context = await browser.newContext({ viewport: DESKTOP });
     const page = await context.newPage();
     await page.goto(`${BASE_URL}/demo`, { waitUntil: "domcontentloaded" });
-    await page.click("text=Fire");
-    await page.waitForSelector("text=Winner:", { timeout: 15000 });
+    await page.waitForTimeout(500);
+    await page.getByRole("button", { name: /Fire \d+ simultaneous holds/ }).click();
+    await page.waitForSelector("text=Winner:", { timeout: 20000 });
     await page.waitForTimeout(300);
     await page.screenshot({ path: `${OUT_DIR}/demo-race.png` });
     console.log("saved demo-race.png");
@@ -253,7 +259,9 @@ async function main() {
     await page.getByLabel("Venue name").fill("Preview Cinema");
     await page.getByLabel("Address").fill("1 Preview Street");
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `${OUT_DIR}/admin-venue-builder.png` });
+    await page.getByText("Live preview").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: `${OUT_DIR}/admin-venue-builder.png`, fullPage: true });
     console.log("saved admin-venue-builder.png");
     await context.close();
   }

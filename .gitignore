@@ -53,3 +53,6 @@ next-env.d.ts
 
 # logs
 *.log
+
+# scripts/screenshots.ts intermediate file, cleaned up automatically
+docs/images/.confirmation-email-preview.html
